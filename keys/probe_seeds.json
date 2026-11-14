@@ -1,17 +1,17 @@
 {
  "max_pages": 8,
- "max_depth": 2,
- "follow": "^pw01s(rl|de)1",
+ "max_depth": 1,
+ "follow": "^pw15[78]ou1",
  "seeds": [
   [
    "POST",
-   "/JRADB/accessS.html",
-   "pw01sde1005202605030120261114/87"
+   "/JRADB/accessO.html",
+   "pw151ou1006202405020120241201Z/7C"
   ],
   [
    "POST",
-   "/JRADB/accessS.html",
-   "pw01skl10202510/1E"
+   "/JRADB/accessO.html",
+   "pw151ou1005202502120120250601Z/8A"
   ]
  ]
 }
