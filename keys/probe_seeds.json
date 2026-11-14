@@ -1,36 +1,17 @@
 {
- "max_pages": 30,
- "max_depth": 1,
+ "max_pages": 8,
+ "max_depth": 2,
+ "follow": "^pw01s(rl|de)1",
  "seeds": [
   [
    "POST",
    "/JRADB/accessS.html",
-   "pw01skl10202610/AA"
+   "pw01sde1005202605030120261114/87"
   ],
   [
    "POST",
    "/JRADB/accessS.html",
-   "pw01srl10052026050320261114/72"
-  ],
-  [
-   "POST",
-   "/JRADB/accessO.html",
-   "pw158ouS308202605041120261115Z/8B"
-  ],
-  [
-   "POST",
-   "/JRADB/accessO.html",
-   "pw157ouS308202605041120261115Z99/69"
-  ],
-  [
-   "POST",
-   "/JRADB/accessO.html",
-   "pw154ouS308202605041120261115Z/7B"
-  ],
-  [
-   "POST",
-   "/JRADB/accessH.html",
-   "pw01hde10052026050320261114/56"
+   "pw01skl10202510/1E"
   ]
  ]
 }

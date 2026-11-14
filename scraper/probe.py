@@ -58,11 +58,12 @@ def decode(b: bytes, ctype: str) -> str:
 def main():
     pub = Path(sys.argv[1]).read_text().strip()
     out = Path(sys.argv[2]); out.mkdir(parents=True, exist_ok=True)
-    seeds, max_pages, max_depth = SEEDS, MAX_PAGES, 2
+    seeds, max_pages, max_depth, follow = SEEDS, MAX_PAGES, 2, re.compile(".")
     if len(sys.argv) > 3 and Path(sys.argv[3]).exists():
         cfg = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
         seeds = [tuple(x) for x in cfg["seeds"]]
         max_pages, max_depth = cfg.get("max_pages", MAX_PAGES), cfg.get("max_depth", 2)
+        follow = re.compile(cfg.get("follow", "."))
     s = requests.Session(); s.headers.update(H)
     q = deque((m, u, c, 0) for m, u, c in seeds)
     seen, kinds, log, files = set(), Counter(), [], {}
@@ -94,7 +95,7 @@ def main():
         print(n, method, url, cname, status, len(body), title, f"links={len(found)}", flush=True)
         if depth < max_depth:
             for u, c in found:
-                if u.startswith("/JRADB/"):
+                if u.startswith("/JRADB/") and follow.search(c):
                     q.append(("POST", u, c, depth + 1))
         time.sleep(WAIT)
 
