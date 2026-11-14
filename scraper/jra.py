@@ -118,6 +118,8 @@ def parse_header(s: BeautifulSoup) -> dict:
             out["distance"] = _num(_t(c), int)
             det = _t(c.find(class_="detail"))
             out["course_detail"] = det.strip("（）") or None
+            if "障害" in det or any(w in (out.get("name") or "") for w in ("障害", "ジャンプ")):
+                out["surface"] = "障害"
             if out.get("surface") is None:
                 for k in ("芝", "ダート", "障害"):
                     if k in det:
@@ -140,7 +142,7 @@ def parse_result(html: str) -> dict:
             a = td.get("horse").find("a") if td.get("horse") else None
             hid = re.search(r"pw01dud\d{2}(\d+)/", a["href"]) if a and a.get("href") else None
             jk = td.get("jockey"); ja = jk.find("a") if jk else None
-            jid = re.search(r"pw04kmk(\d+)/", ja.get("onclick", "")) if ja else None
+            jid = re.search(r"pw04kmk(\d+)/", ja.get("onclick", "") + ja.get("href", "")) if ja else None
             hw = _t(td.get("h_weight"))
             bw = re.match(r"(\d+)\s*\(([-+]?\d+|計不|前計不)?\)?", hw)
             waku = td.get("waku").find("img") if td.get("waku") else None
