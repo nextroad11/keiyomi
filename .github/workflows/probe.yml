@@ -1,0 +1,41 @@
+name: 下見（JRA公式サイト）
+# GitHub Actions から JRA に届くか、ページの作りを確かめる一回きりの下見。
+# 取ったページは封をして data ブランチの debug/probe/ に置く（平文はコミットしない）。
+on:
+  push:
+    branches: [main]
+    paths: ["scraper/probe.py", ".github/workflows/probe.yml", "keys/probe_pub.txt"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: probe
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: data ブランチを用意（無ければ作る）
+        run: |
+          if git ls-remote --exit-code --heads origin data >/dev/null; then
+            git clone -q --depth 1 --branch data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" data
+          else
+            mkdir data && cd data && git init -q -b data
+            git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+            echo "# data ブランチ（暗号化したデータ置き場）" > README.md
+          fi
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install requests==2.32.3 cryptography==43.0.3
+      - run: python scraper/probe.py keys/probe_pub.txt data/debug/probe
+      - name: 保存
+        working-directory: data
+        run: |
+          git config user.name "keiyomi-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -q -m "下見: JRA公式サイト"
+          for i in 1 2 3; do git push -q -u origin data && exit 0; git pull -q --rebase origin data; done
+          exit 1
