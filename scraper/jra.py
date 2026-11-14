@@ -302,3 +302,34 @@ def parse_card(html: str) -> dict:
     race["runners"] = runners
     race["n"] = len(runners)
     return race
+
+
+# ---------- 3連複・3連単オッズ（馬番順のページ） ----------
+_ROW = re.compile(r'<th scope="row">\s*(\d+)\s*</th>\s*<td[^>]*>\s*(?:<[^>]+>\s*)*([\d.,]*)')  # 人気の組は <strong> で囲まれる
+
+
+def parse_odds_trio(html: str) -> dict:
+    """3連複：{(a,b,c): オッズ}（a<b<c、票数なし・取消は入れない）"""
+    out = {}
+    for m in re.finditer(r'<table class="[^"]*fuku3[^"]*">\s*<caption>\s*(\d+)-(\d+)\s*</caption>(.*?)</table>', html, re.S):
+        a, b = int(m.group(1)), int(m.group(2))
+        for c, v in _ROW.findall(m.group(3)):
+            if v:
+                out[tuple(sorted((a, b, int(c))))] = float(v.replace(",", ""))
+    return out
+
+
+def parse_odds_trifecta(html: str) -> dict:
+    """3連単：{(1着,2着,3着): オッズ}"""
+    out = {}
+    for li in re.finditer(r'<li>\s*<div class="p_line">(.*?)</table>', html, re.S):
+        body = li.group(1)
+        nums = re.findall(r'<div class="num">\s*(\d+)\s*</div>', body)
+        if len(nums) < 2:
+            continue
+        a, b = int(nums[0]), int(nums[1])
+        tb = body.split('tan3', 1)[-1]
+        for c, v in _ROW.findall(tb):
+            if v:
+                out[(a, b, int(c))] = float(v.replace(",", ""))
+    return out
