@@ -3,6 +3,9 @@ name: 開催日の取得
 # 30分おきの予約は「止まっていたら起こす」ためのもの（動いている間は後ろで待つ）。
 # 1分ごとに最新のコードに入れ替え、5分ごとに保存する。開催が無い日・全レース終了後はすぐ終わる。
 on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/daily.yml", "scraper/daily.py"]
   schedule:
     - cron: "*/30 23 * * *"
     - cron: "*/30 0-8 * * *"
