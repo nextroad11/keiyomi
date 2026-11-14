@@ -5,7 +5,7 @@
 - 結果は日付ごとに enc/results/YYYYMMDD.json（暗号化）へ。
 - state.json（平文）には、どのレースを取り終えたかの ID だけを書く（レースの中身は書かない）。
 
-使い方: APP_PASS=... python scraper/history.py --data data --months 24 --minutes 40
+使い方（GitHub Actions 内）: APP_PASS=... python scraper/history.py --data data --months 24 --minutes 40
 """
 from __future__ import annotations
 
