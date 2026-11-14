@@ -6,7 +6,8 @@ GitHub Actions から JRA のページに届くか、出馬表・オッズ・結
   開けるのは、その公開鍵と組の秘密鍵を持つ Claude の作業環境だけ。
 - 平文で残すのは「どのURLに何を送って、何番が返ったか」の一覧だけ。
 
-使い方: python scraper/probe.py keys/probe_pub.txt 出力フォルダ
+使い方: python scraper/probe.py keys/probe_pub.txt 出力フォルダ [入口のJSON]
+  入口のJSON（任意）: {"seeds": [["POST", "/JRADB/accessS.html", "cname"], ...], "max_pages": 30, "max_depth": 1}
 """
 from __future__ import annotations
 
@@ -57,16 +58,21 @@ def decode(b: bytes, ctype: str) -> str:
 def main():
     pub = Path(sys.argv[1]).read_text().strip()
     out = Path(sys.argv[2]); out.mkdir(parents=True, exist_ok=True)
+    seeds, max_pages, max_depth = SEEDS, MAX_PAGES, 2
+    if len(sys.argv) > 3 and Path(sys.argv[3]).exists():
+        cfg = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+        seeds = [tuple(x) for x in cfg["seeds"]]
+        max_pages, max_depth = cfg.get("max_pages", MAX_PAGES), cfg.get("max_depth", 2)
     s = requests.Session(); s.headers.update(H)
-    q = deque((m, u, c, 0) for m, u, c in SEEDS)
+    q = deque((m, u, c, 0) for m, u, c in seeds)
     seen, kinds, log, files = set(), Counter(), [], {}
-    while q and len(log) < MAX_PAGES:
+    while q and len(log) < max_pages:
         method, url, cname, depth = q.popleft()
         key = (url, cname)
         if key in seen:
             continue
         kind = url.split("/")[-1]
-        if cname and kinds[kind] >= PER_KIND:
+        if cname and depth > 0 and kinds[kind] >= PER_KIND:
             continue
         seen.add(key); kinds[kind] += 1
         try:
@@ -86,7 +92,7 @@ def main():
         log.append({"n": n, "method": method, "url": url, "cname": cname, "status": status,
                     "bytes": len(body), "title": title, "links": len(found), "depth": depth})
         print(n, method, url, cname, status, len(body), title, f"links={len(found)}", flush=True)
-        if depth < 2:
+        if depth < max_depth:
             for u, c in found:
                 if u.startswith("/JRADB/"):
                     q.append(("POST", u, c, depth + 1))
