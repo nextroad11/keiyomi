@@ -1,0 +1,52 @@
+name: 過去データの取り込み
+# 過去24か月の結果を、1回40分ずつ小分けに取り込む（1時間おきに自動で続きから）。
+# 取り終えたら何もせずに終わる。合言葉（APP_PASS）が未設定なら何もしない。
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      months:
+        description: "さかのぼる月数"
+        default: "24"
+permissions:
+  contents: write
+concurrency:
+  group: history
+  cancel-in-progress: false
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: 合言葉の確認
+        env:
+          APP_PASS: ${{ secrets.APP_PASS }}
+        run: |
+          if [ -z "$APP_PASS" ]; then echo "APP_PASS が未設定なので取り込みをしません"; echo "skip=1" >> $GITHUB_ENV; fi
+      - uses: actions/checkout@v4
+        if: env.skip != '1'
+      - name: data ブランチ
+        if: env.skip != '1'
+        run: git clone -q --depth 1 --branch data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" data
+      - uses: actions/setup-python@v5
+        if: env.skip != '1'
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: scraper/requirements.txt }
+      - if: env.skip != '1'
+        run: pip install -r scraper/requirements.txt
+      - name: 取り込み（40分まで）
+        if: env.skip != '1'
+        env:
+          APP_PASS: ${{ secrets.APP_PASS }}
+        run: python scraper/history.py --data data --months "${{ inputs.months || '24' }}" --minutes 40
+      - name: 保存
+        if: always() && env.skip != '1'
+        working-directory: data
+        run: |
+          git config user.name "keiyomi-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -q -m "過去データ: $(python3 -c 'import json;s=json.load(open("history/state.json"));print(len(s["done"]),"レース")')"
+          for i in 1 2 3 4; do git push -q origin data && exit 0; git pull -q --rebase origin data; done
+          exit 1
