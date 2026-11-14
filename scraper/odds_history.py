@@ -46,6 +46,9 @@ def main():
         if not todo:
             continue
         day = dst.read(f"exotic/{date}.json", {"races": {}})
+        todo = [r for r in todo if r["id"] not in day["races"]]  # 開催日の取得（daily.py）で取り済みのもの
+        if not todo:
+            continue
         for r in todo:
             if time.time() - t0 > a.minutes * 60:
                 save(date, day)

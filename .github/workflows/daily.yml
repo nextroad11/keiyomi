@@ -1,0 +1,52 @@
+name: 開催日の取得
+# 開催日の8時〜18時（日本時間）に動き、1回の実行の中で1分ごとに daily.py を呼ぶ。
+# 30分おきの予約は「止まっていたら起こす」ためのもの（動いている間は後ろで待つ）。
+# 1分ごとに最新のコードに入れ替え、5分ごとに保存する。開催が無い日・全レース終了後はすぐ終わる。
+on:
+  schedule:
+    - cron: "*/30 23 * * *"
+    - cron: "*/30 0-8 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: daily
+  cancel-in-progress: false
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - name: data・odds ブランチ
+        run: |
+          url="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+          git clone -q --depth 1 --branch data "$url" data
+          git clone -q --depth 1 --branch odds "$url" odds
+          for d in data odds; do git -C $d config user.name "keiyomi-bot"; git -C $d config user.email "41898282+github-actions[bot]@users.noreply.github.com"; done
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: scraper/requirements.txt }
+      - run: pip install -r scraper/requirements.txt
+      - name: 1分ごとに取得
+        env:
+          APP_PASS: ${{ secrets.APP_PASS }}
+        run: |
+          save() {
+            for d in data odds; do
+              git -C $d add -A
+              git -C $d diff --cached --quiet && continue
+              git -C $d commit -q -m "開催日の取得 $(TZ=Asia/Tokyo date '+%m/%d %H:%M')"
+              for i in 1 2 3 4; do git -C $d push -q origin HEAD && break; git -C $d pull -q --rebase origin "$(git -C $d branch --show-current)"; done
+            done
+          }
+          end=$((SECONDS + 345*60)); n=0
+          while [ $SECONDS -lt $end ]; do
+            h=$(TZ=Asia/Tokyo date +%H)
+            if [ "$h" -lt 8 ] || [ "$h" -ge 18 ]; then echo "時間外"; break; fi
+            git pull -q --ff-only origin main || true
+            python scraper/daily.py --data data --odds odds --done-flag /tmp/daily_done || echo "この回は失敗（次の分に続ける）"
+            n=$((n+1)); [ $((n % 5)) -eq 0 ] && save
+            [ -f /tmp/daily_done ] && break
+            sleep $((60 - $(date +%S)))
+          done
+          save
