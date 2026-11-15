@@ -47,6 +47,7 @@ jobs:
               for i in 1 2 3 4; do git -C $d push -q -u origin "$b" && break; git -C $d pull -q --rebase origin "$b"; done
             done
           }
+          set +e   # 1回の失敗でループ全体を止めない
           end=$((SECONDS + 345*60)); n=0
           while [ $SECONDS -lt $end ]; do
             h=$(TZ=Asia/Tokyo date +%H)
@@ -55,6 +56,6 @@ jobs:
             python scraper/daily.py --data data --odds odds --done-flag /tmp/daily_done || echo "この回は失敗（次の分に続ける）"
             n=$((n+1)); [ $((n % 5)) -eq 0 ] && save
             [ -f /tmp/daily_done ] && break
-            sleep $((60 - $(date +%S)))
+            sec=$(date +%S); sleep $((60 - 10#$sec))   # 10# がないと 08・09 秒が8進数とみなされて止まる
           done
           save
