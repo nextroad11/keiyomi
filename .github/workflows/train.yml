@@ -30,14 +30,14 @@ jobs:
           APP_PASS: ${{ secrets.APP_PASS }}
           KEIYOMI_DEV: "0"
         run: python model/train.py --data data --odds odds
-      - name: 予想がまだ無い開催日の予想と記録（締切前のオッズだけを使う）
+      - name: 直近の開催日の予想と記録（記録は締切前のオッズだけを使う）
         env:
           APP_PASS: ${{ secrets.APP_PASS }}
           KEIYOMI_DEV: "0"
         run: |
-          for f in data/enc/live/*.json; do
-            d=$(basename $f .json)
-            [ -f data/enc/pred/$d.json ] || python model/predict.py --data data --odds odds --date $d
+          # 直近の開催日は毎回やり直す（記録用の買い目は一度固定したら変えない）
+          for f in $(ls data/enc/live/*.json | tail -4); do
+            python model/predict.py --data data --odds odds --date $(basename $f .json)
           done
       - name: 保存
         working-directory: data

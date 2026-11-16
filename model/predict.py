@@ -171,6 +171,7 @@ def main():
     rows = feature_rows(D, live, model, Path(a.cache))
     exl = O.read(f"live/{date}.json", {"races": {}})["races"]
     res = D.read(f"results/{date}.json", {"races": {}})["races"]
+    exf = O.read(f"exotic/{date}.json", {"races": {}})["races"]
     old = D.read(f"pred/{date}.json", {"date": date, "races": {}})
     new = {"date": date, "model": model["version"], "races": {}}
     for rid, r in sorted(live["races"].items(), key=lambda kv: kv[1].get("post") or ""):
@@ -180,12 +181,24 @@ def main():
             p["paper"] = prev["paper"]
         elif p.get("ex_mins") is not None and p["ex_mins"] <= FREEZE_AT:
             p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", [])}
-        elif rid in res and p.get("ex_mins") is not None and p["ex_mins"] <= FALLBACK_AT:
+        elif rid in res and p.get("ex_mins") is not None and p["ex_mins"] <= 30.5:
+            # 5分前が取れずに発走した：取れた中で一番遅い締切前のオッズで固定（何分前かを残す）
             p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "late": True}
         if rid in res:
             p["result"] = score(p.get("paper") or {"trio": [], "tri": []}, res[rid])
             if "paper" not in p:
                 p["result"]["no_paper"] = True  # 締切前の3連オッズが取れなかった
+                # 参考：確定オッズで計算した買い目（実際には選べなかったので記録には入れない）
+                if "ref" in prev:
+                    p["ref"] = prev["ref"]
+                elif rid in exf:
+                    fin = res[rid].get("odds_final") or {}
+                    r2 = dict(r); r2["tf"] = {"確定": {"mins": 0, "at": "確定", "odds": fin}}
+                    v = exf[rid]
+                    q = predict_race(rid, r2, rows, {"確定": {"mins": 0, "at": "確定", "nos": v["nos"], "tri": v["tri"], "trio": v["trio"]}}, model)
+                    if q and "trio" in q:
+                        ref = {"trio": q["trio"], "tri": q["tri"]}
+                        p["ref"] = {**ref, "result": score(ref, res[rid])}
             # 発走後は、締切前の最後の予想のまま残す（確定オッズで計算し直さない）
             for k in ("horses", "trio", "tri", "trio_top", "man", "favout", "odds_at", "odds_mins", "ex_at", "ex_mins", "fav"):
                 if k in prev:

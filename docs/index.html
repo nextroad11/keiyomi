@@ -214,7 +214,7 @@ const W = (no,n,w) => `<span class="waku w${w||wakuOf(no,n)}">${esc(no)}</span>`
 function status(p){
   if(p.result){
     const t=p.result, ret=(t.trio?.ret||0)+(t.tri?.ret||0);
-    if(t.no_paper) return '<span class="chip">記録なし</span>';
+    if(t.no_paper){ const rr=p.ref?.result; const rret=(rr?.trio?.ret||0)+(rr?.tri?.ret||0); return rret>0?'<span class="chip">参考で的中</span>':'<span class="chip">記録なし</span>'; }
     if(ret>0) return `<span class="chip shu">記録的中</span>`;
     return '<span class="chip">結果</span>';
   }
@@ -233,7 +233,7 @@ function renderToday(){
   const nTrio = races.filter(r=>(r.trio||[]).length).length;
   let html = `<div class="banner">まだ賭けない期間です。買い目は<b>記録用</b>で、締切5分前のオッズで固定して実際の払戻で採点しています。</div>
   <div class="card"><div class="row" style="justify-content:space-between"><div style="flex:1;min-width:140px">${sel}</div>
-    <div class="small muted">${races.length}レース・3連複の候補あり ${nTrio}R</div></div></div>`;
+    <div class="small muted">${races.length}レース・3連複の候補あり ${nTrio}R${races.some(r=>r.result)?`・結果 ${races.filter(r=>r.result).length}R・記録 ${races.filter(r=>r.paper).length}R`:""}</div></div></div>`;
   const byV = {}; races.forEach(r => (byV[r.venue] = byV[r.venue] || []).push(r));
   html += `<div style="display:grid;gap:8px">` + races.map(r => {
     const nT=(r.trio||[]).length, nX=(r.tri||[]).length, done=!!r.result;
@@ -253,6 +253,13 @@ function renderToday(){
 function bindDate(){ const s=$("#dateSel"); if(s) s.onchange = async () => { DATE=s.value; RID=null; PRED = await fetchEnc(`pred/${DATE}.json`); render(); }; }
 
 /* ---------- レース ---------- */
+function refBlock(ref){
+  const r=ref.result||{}, T=r.trio||{}, X=r.tri||{};
+  return `<div style="margin-top:8px;border-top:1px dashed var(--rule);padding-top:8px">
+    <div class="small"><b>参考：確定オッズで計算した買い目</b>（実際には選べなかったので、記録の成績には入れません）</div>
+    <div class="small" style="margin-top:4px">3連複 ${T.pts||0}点${(ref.trio||[]).length?"（"+ref.trio.map(x=>esc(x.c)).join("、")+"）":""} → ${T.ret?'<b class="neg">的中 '+yen(T.ret)+'</b>':"不的中"}</div>
+    <div class="small">3連単 ${X.pts||0}点 → ${X.ret?'<b class="neg">的中 '+yen(X.ret)+'</b>':"不的中"}</div></div>`;
+}
 function comboTable(list, kind, hitKey){
   if(!list || !list.length) return "";
   return `<div class="tw"><table><thead><tr><th>買い目</th><th class="r">AI確率</th><th class="r">オッズ</th><th class="r">期待値</th></tr></thead><tbody>
@@ -283,7 +290,7 @@ function renderRace(){
     html += `<div class="card"><h2>結果 <span class="sub">記録の採点</span></h2>
       <div class="row" style="gap:6px;margin-bottom:8px">${top3.map((no,i)=>`<span class="small muted">${i+1}着</span>${W(no,n)}`).join("")}</div>
       <div class="small">3連複 ${t.trio_pay?yen(t.trio_pay):"—"} ／ 3連単 ${t.tri_pay?yen(t.tri_pay):"—"}</div>
-      ${t.no_paper?`<p class="note" style="margin-top:6px">締切前の3連オッズが取れなかったため、記録の買い目はありません。</p>`:
+      ${t.no_paper?`<p class="note" style="margin-top:6px">締切前の3連オッズが取れなかったため、記録の買い目はありません。</p>${p.ref?refBlock(p.ref):""}`:
       `<div class="small" style="margin-top:6px">記録した3連複 ${rT.pts||0}点 → <b class="${rT.ret?"neg":""}">${rT.ret?"的中 "+yen(rT.ret):"不的中"}</b> ／ 3連単 ${rX.pts||0}点 → <b class="${rX.ret?"neg":""}">${rX.ret?"的中 "+yen(rX.ret):"不的中"}</b></div>`}
     </div>`;
   }
