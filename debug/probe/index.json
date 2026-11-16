@@ -3,66 +3,44 @@
   "n": 0,
   "method": "POST",
   "url": "/JRADB/accessO.html",
-  "cname": "pw151ou1006202405020120241201Z/7C",
+  "cname": "pw153ou1005202605030120261114Z/D1",
   "status": 200,
-  "bytes": 87789,
-  "title": "単勝・複勝オッズ（馬番順）　JRA",
-  "links": 113,
+  "bytes": 79362,
+  "title": "枠連オッズ（枠番順）　JRA",
+  "links": 68,
   "depth": 0
  },
  {
   "n": 1,
   "method": "POST",
   "url": "/JRADB/accessO.html",
-  "cname": "pw151ou1005202502120120250601Z/8A",
+  "cname": "pw154ou1005202605030120261114Z/55",
   "status": 200,
-  "bytes": 87042,
-  "title": "単勝・複勝オッズ（馬番順）　JRA",
-  "links": 110,
+  "bytes": 84782,
+  "title": "馬連オッズ（馬番順）　JRA",
+  "links": 68,
   "depth": 0
  },
  {
   "n": 2,
   "method": "POST",
   "url": "/JRADB/accessO.html",
-  "cname": "pw157ou1006202405020120241201Z99/F6",
+  "cname": "pw155ou1005202605030120261114Z/D9",
   "status": 200,
-  "bytes": 151890,
-  "title": "3連複オッズ（馬番順）　JRA",
+  "bytes": 93737,
+  "title": "ワイドオッズ（馬番順）　JRA",
   "links": 68,
-  "depth": 1
+  "depth": 0
  },
  {
   "n": 3,
   "method": "POST",
   "url": "/JRADB/accessO.html",
-  "cname": "pw158ou1006202405020120241201Z/18",
+  "cname": "pw156ou1005202605030120261114Z/5D",
   "status": 200,
-  "bytes": 703930,
-  "title": "3連単オッズ（馬番順）　JRA",
+  "bytes": 92587,
+  "title": "馬単オッズ（馬番順）　JRA",
   "links": 68,
-  "depth": 1
- },
- {
-  "n": 4,
-  "method": "POST",
-  "url": "/JRADB/accessO.html",
-  "cname": "pw157ou1005202502120120250601Z99/04",
-  "status": 200,
-  "bytes": 151029,
-  "title": "3連複オッズ（馬番順）　JRA",
-  "links": 66,
-  "depth": 1
- },
- {
-  "n": 5,
-  "method": "POST",
-  "url": "/JRADB/accessO.html",
-  "cname": "pw158ou1005202502120120250601Z/26",
-  "status": 200,
-  "bytes": 702246,
-  "title": "3連単オッズ（馬番順）　JRA",
-  "links": 66,
-  "depth": 1
+  "depth": 0
  }
 ]
