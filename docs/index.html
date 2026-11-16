@@ -63,7 +63,9 @@ input,select{background:var(--paper);border:1px solid var(--rule);border-radius:
 .race .r{font-size:11px;color:var(--muted)}
 .race .nm{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .race .meta{grid-column:2/4;display:flex;gap:6px;flex-wrap:wrap}
-.race.done{opacity:.72}
+.race .res{grid-column:2/4;display:grid;gap:3px;margin:4px 0 2px;padding:6px 8px;background:var(--paper);border-radius:4px}
+.race .pays{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:13.5px}
+.race .pays b.num{font-size:15px}
 .race .st{justify-self:end}
 /* 出走馬 */
 .tw{overflow-x:auto;margin:0 -4px;padding:0 4px}
@@ -241,6 +243,7 @@ function renderToday(){
       <div><div class="t">${esc(r.post||"--:--")}</div><div class="r">${esc(r.venue||"")}${esc(r.rno||"")}R</div></div>
       <div class="nm">${esc(r.name||"")} <span class="small muted">${esc(r.surface||"")}${r.distance?esc(r.distance)+"m":""}</span></div>
       <div class="st">${status(r)}</div>
+      ${done?resLine(r):""}
       <div class="meta">
         ${nT?`<span class="chip gold">3連複 ${nT}点</span>`:`<span class="chip">3連複 候補なし</span>`}
         ${nX?`<span class="chip">3連単 ${nX}点（検証中）</span>`:""}
@@ -249,6 +252,14 @@ function renderToday(){
         ${r.odds_mins!=null && !done?`<span class="chip">${minsLabel(r.odds_mins)}のオッズ</span>`:""}
       </div></button>`; }).join("") + `</div>`;
   el.innerHTML = html; bindDate();
+}
+function resLine(r){
+  const t=r.result||{}, top=t.top3||[], n=r.n||(r.horses||[]).length;
+  const own=(k)=>{ const x=t[k]||{}; return x.pts ? (x.ret?` <b class="neg">記録的中 ${yen(x.ret)}</b>`:` <span class="muted">記録${x.pts}点 外れ</span>`) : ""; };
+  return `<div class="res">
+    <div class="row" style="gap:4px">${top.map(no=>W(no,n)).join('<span class="muted small">→</span>')}</div>
+    <div class="pays"><span>3連複 <b class="num">${t.trio_pay?yen(t.trio_pay):"—"}</b>${own("trio")}</span>
+    <span>3連単 <b class="num">${t.tri_pay?yen(t.tri_pay):"—"}</b>${own("tri")}</span></div></div>`;
 }
 function bindDate(){ const s=$("#dateSel"); if(s) s.onchange = async () => { DATE=s.value; RID=null; PRED = await fetchEnc(`pred/${DATE}.json`); render(); }; }
 
