@@ -5,7 +5,7 @@ name: 開催日の取得
 on:
   push:
     branches: [main]
-    paths: [".github/workflows/daily.yml", "scraper/daily.py"]
+    paths: [".github/workflows/daily.yml", "scraper/daily.py", "model/predict.py", "model/prod.py"]
   schedule:
     - cron: "*/30 23 * * *"
     - cron: "*/30 0-8 * * *"
@@ -33,7 +33,7 @@ jobs:
           for d in data odds; do git -C $d config user.name "keiyomi-bot"; git -C $d config user.email "41898282+github-actions[bot]@users.noreply.github.com"; done
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip, cache-dependency-path: scraper/requirements.txt }
-      - run: pip install -r scraper/requirements.txt
+      - run: pip install -r scraper/requirements.txt -r model/requirements.txt
       - name: 1分ごとに取得
         env:
           APP_PASS: ${{ secrets.APP_PASS }}
@@ -54,6 +54,7 @@ jobs:
             if [ "$h" -lt 8 ] || [ "$h" -ge 18 ]; then echo "時間外"; break; fi
             git pull -q --ff-only origin main || true
             python scraper/daily.py --data data --odds odds --done-flag /tmp/daily_done || echo "この回は失敗（次の分に続ける）"
+            python model/predict.py --data data --odds odds || echo "予想の計算に失敗（次の分に続ける）"
             n=$((n+1)); [ $((n % 5)) -eq 0 ] && save
             [ -f /tmp/daily_done ] && break
             sec=$(date +%S); sleep $((60 - 10#$sec))   # 10# がないと 08・09 秒が8進数とみなされて止まる

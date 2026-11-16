@@ -1,0 +1,42 @@
+name: 本番用の学習
+# 使えるデータ全部で、検証で決めた作り方のまま学習し直す（毎週月曜の朝と手動・変更をアップしたとき）。
+on:
+  schedule:
+    - cron: "13 22 * * 0"   # 月曜 7:13（日本時間）
+  push:
+    branches: [main]
+    paths: ["model/train.py", "model/prod.py", "model/features.py", "model/pl.py", "model/exotic.py", ".github/workflows/train.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: train
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: data・odds ブランチ
+        run: |
+          url="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+          git clone -q --depth 1 --branch data "$url" data
+          git clone -q --depth 1 --branch odds "$url" odds
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: "scraper/requirements.txt" }
+      - run: pip install -r scraper/requirements.txt -r model/requirements.txt
+      - name: 学習
+        env:
+          APP_PASS: ${{ secrets.APP_PASS }}
+          KEIYOMI_DEV: "0"
+        run: python model/train.py --data data --odds odds
+      - name: 保存
+        working-directory: data
+        run: |
+          git config user.name "keiyomi-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -q -m "本番用の学習"
+          for i in 1 2 3 4; do git push -q origin data && exit 0; git pull -q --rebase origin data; done
+          exit 1

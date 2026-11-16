@@ -6,7 +6,8 @@ JRA公式サイトの出馬表・オッズ・結果を自動で集め、AIの確
 | 役割 | 担当 | 場所 |
 |---|---|---|
 | データ取得 | GitHub Actions | `.github/workflows/`, `scraper/` |
-| 予想の計算と表示 | ブラウザ（GitHub Pages） | `docs/`（準備中） |
+| 予想の計算 | GitHub Actions（開催日に1分ごと） | `model/predict.py`、学習は `model/train.py`（週1回） |
+| 表示 | ブラウザ（GitHub Pages、合言葉で開く） | `docs/index.html` |
 | データ置き場 | `data` ブランチ | 暗号化したJSONのみ |
 
 ## 決まりごと
@@ -22,6 +23,9 @@ JRA公式サイトの出馬表・オッズ・結果を自動で集め、AIの確
 
 3. 過去の確定3連複・3連単オッズ（`odds-history.yml`、`scraper/odds_history.py`）：過去結果の各レースについて取り込む。置き場は `odds` ブランチ。
 4. 開催日の取得（`daily.yml`、`scraper/daily.py`）：開催日の8〜18時に1分ごと。出馬表、発走30・20・15・10・5・3・1分前の単複オッズ、30・10・5・3・1分前の3連複・3連単オッズ、結果と確定オッズ。遅れて取れなかった時点は空けておく。
+
+5. 本番用の学習（`train.yml`、`model/train.py`）：週1回、使えるデータ全部で学習し直して `enc/model.json`。
+6. 開催日の予想と記録（`model/predict.py`、`daily.yml` の中で1分ごと）：最新オッズで AI 確率と3連複・3連単の買い目。締切5分前のオッズで買い目を固定し、結果が出たら実際の払戻で採点（まだ賭けない）。`enc/pred/`、`enc/paper/records.json`。
 
 ## 検証
 - `model/REPORT.md` に結果。未使用期間の数字だけを報告する。
