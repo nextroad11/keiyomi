@@ -92,6 +92,9 @@ svg text{fill:var(--muted);font-family:var(--num);font-size:11px}
 #lock{min-height:80vh;display:grid;place-items:center}
 #lock .card{max-width:360px;width:100%;display:grid;gap:10px}
 .err{color:var(--shu);font-size:13px;min-height:1.2em}
+/* iPhone のパスワード欄は日本語を打てないので、普通の欄を伏せ字で表示する */
+.secret{-webkit-text-security:disc;text-security:disc}
+.secret.show{-webkit-text-security:none;text-security:none}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
@@ -108,7 +111,8 @@ svg text{fill:var(--muted);font-family:var(--num);font-size:11px}
     <form class="card" id="lockf">
       <h2>合言葉を入れてください</h2>
       <p class="note">データは合言葉で暗号化してあります。この端末には合言葉ではなく鍵だけを保存します。</p>
-      <input id="lockpw" type="password" autocomplete="current-password" placeholder="合言葉" aria-label="合言葉">
+      <input id="lockpw" type="text" class="secret" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="合言葉（日本語も入力できます）" aria-label="合言葉">
+      <label class="small row" style="gap:6px;cursor:pointer"><input type="checkbox" id="showpw" style="width:auto"> 合言葉を表示する</label>
       <button class="btn primary" id="lockbtn" type="submit">開く</button>
       <div class="err" id="lockerr" role="alert"></div>
     </form>
@@ -173,6 +177,7 @@ async function unlock(){
   }catch(_){ LS.del("k"); }
   $("#lock").hidden = false;
 }
+$("#showpw").addEventListener("change", e => $("#lockpw").classList.toggle("show", e.target.checked));
 $("#lockf").addEventListener("submit", async e => {
   e.preventDefault();
   const pw = $("#lockpw").value.trim().normalize("NFKC"); if(!pw) return;
