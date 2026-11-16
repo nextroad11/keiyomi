@@ -1,17 +1,26 @@
 {
- "max_pages": 8,
- "max_depth": 1,
- "follow": "^pw15[78]ou1",
+ "max_pages": 4,
+ "max_depth": 0,
  "seeds": [
   [
    "POST",
    "/JRADB/accessO.html",
-   "pw151ou1006202405020120241201Z/7C"
+   "pw153ou1005202605030120261114Z/D1"
   ],
   [
    "POST",
    "/JRADB/accessO.html",
-   "pw151ou1005202502120120250601Z/8A"
+   "pw154ou1005202605030120261114Z/55"
+  ],
+  [
+   "POST",
+   "/JRADB/accessO.html",
+   "pw155ou1005202605030120261114Z/D9"
+  ],
+  [
+   "POST",
+   "/JRADB/accessO.html",
+   "pw156ou1005202605030120261114Z/5D"
   ]
  ]
 }
