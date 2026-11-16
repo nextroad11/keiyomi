@@ -333,3 +333,32 @@ def parse_odds_trifecta(html: str) -> dict:
             if v:
                 out[(a, b, int(c))] = float(v.replace(",", ""))
     return out
+
+
+# ---------- 枠連・馬連・ワイド・馬単オッズ（馬番順のページ） ----------
+_PAIR_TABLE = re.compile(r'<table class="basic narrow-xy (waku|umaren|wide|umatan)">\s*<caption[^>]*>(.*?)</caption>(.*?)</table>', re.S)
+_PAIR_ROW = re.compile(r'<th scope="row">\s*(\d+)\s*</th>\s*<td[^>]*>(.*?)</td>', re.S)
+
+
+def parse_odds_pairs(html: str) -> dict:
+    """枠連・馬連・馬単：{(a,b): オッズ}（馬単は着順どおり、他は a<=b）
+    ワイド：{(a,b): (下限, 上限)}"""
+    out = {}
+    for kind, cap, body in _PAIR_TABLE.findall(html):
+        m = re.search(r"(\d+)", re.sub(r"<img[^>]*alt=\"枠(\d)[^\"]*\"[^>]*>", r"\1", cap))
+        if not m:
+            continue
+        a = int(m.group(1))
+        for b, cell in _PAIR_ROW.findall(body):
+            b = int(b)
+            if kind == "wide":
+                lo = re.search(r'class="min">\s*([\d.,]+)', cell); hi = re.search(r'class="max">\s*([\d.,]+)', cell)
+                if lo and hi:
+                    out[tuple(sorted((a, b)))] = (float(lo.group(1).replace(",", "")), float(hi.group(1).replace(",", "")))
+                continue
+            v = re.search(r"([\d,]+\.\d)", cell)
+            if not v:
+                continue
+            key = (a, b) if kind == "umatan" else tuple(sorted((a, b)))
+            out[key] = float(v.group(1).replace(",", ""))
+    return out

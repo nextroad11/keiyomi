@@ -2,7 +2,7 @@
 
 1. 朝：出馬表の開催選択 → 今日の各場のレース一覧 → 各レースの出馬表（前走4回分・オッズ・人気）。
 2. 締切前：発走の 30・20・15・10・5・3・1 分前に単勝・複勝オッズ（馬体重つき）。
-   3連複・3連単は 30・10・5・3・1 分前。遅れて取れなかった時点は「取得不可」として空けておく（あとから埋めない）。
+   枠連・馬連・ワイド・馬単・3連複・3連単は 30・10・5・3・1 分前。遅れて取れなかった時点は「取得不可」として空けておく（あとから埋めない）。
 3. 発走後：結果・払戻、確定の単複・3連複・3連単オッズ。
 
 保存先
@@ -10,6 +10,7 @@
 - data ブランチ enc/results/YYYYMMDD.json … 結果（過去データと同じ形）
 - odds ブランチ enc/live/YYYYMMDD.json   … 3連複・3連単の締切前オッズ
 - odds ブランチ enc/exotic/YYYYMMDD.json … 確定の3連複・3連単（過去データと同じ形）
+- odds ブランチ enc/pairs/YYYYMMDD.json  … 確定の枠連・馬連・ワイド・馬単
 今日の分が全部終わったら（または開催が無い日は）、--done-flag のファイルを作って知らせる。
 
 使い方（GitHub Actions 内）: APP_PASS=... python scraper/daily.py --data data --odds odds --done-flag /tmp/daily_done
@@ -117,18 +118,19 @@ def main():
                 trio = jra.parse_odds_trio(cl.get("/JRADB/accessO.html", c7)) if c7 else {}
                 tri = jra.parse_odds_trifecta(cl.get("/JRADB/accessO.html", c8)) if c8 else {}
                 nos = sorted(no for x in (r["card"] or {}).get("runners", []) if (no := x.get("no")))
+                pairs = _fetch_pairs(cl, html, rid, nos)
                 if ex_live is None:
                     ex_live = O.read(f"live/{date}.json", {"races": {}})
                 ex_live["races"].setdefault(rid, {})[str(min(due_ex))] = {
                     "at": stamp, "mins": round(mins, 1), "nos": nos,
-                    "trio": odds_codec.pack(nos, trio, False), "tri": odds_codec.pack(nos, tri, True)}
+                    "trio": odds_codec.pack(nos, trio, False), "tri": odds_codec.pack(nos, tri, True), "pairs": pairs}
                 r["ex"] += due_ex
             print(f"{rid} 発走{mins:.0f}分前 単複{'○' if due_tf else '-'} 3連{'○' if due_ex else '-'}")
         except RuntimeError as e:
             print("オッズを取得できず", rid, e)
 
     # 3. 結果と確定オッズ
-    res_day = ex_day = None
+    res_day = ex_day = pr_day = None
     live.pop("_res", None)
     for rid, r in sorted(races.items(), key=lambda kv: kv[1]["post"] or "99"):
         if r["result"] or not r["post"] or time.time() - t0 > BUDGET:
@@ -160,11 +162,14 @@ def main():
             c7, c8 = _exotic_links(tf_html, rid)
             trio = jra.parse_odds_trio(cl.get("/JRADB/accessO.html", c7)) if c7 else {}
             tri = jra.parse_odds_trifecta(cl.get("/JRADB/accessO.html", c8)) if c8 else {}
+            nos = sorted({x["no"] for x in race["runners"]})
+            pairs = _fetch_pairs(cl, tf_html, rid, nos)
             if res_day is None:
                 res_day = D.read(f"results/{date}.json", {"races": {}})
                 ex_day = O.read(f"exotic/{date}.json", {"races": {}})
+                pr_day = O.read(f"pairs/{date}.json", {"races": {}})
             res_day["races"][rid] = race
-            nos = sorted({x["no"] for x in race["runners"]})
+            pr_day["races"][rid] = {"nos": nos, **pairs}
             ex_day["races"][rid] = {"nos": nos, "trio": odds_codec.pack(nos, trio, False), "tri": odds_codec.pack(nos, tri, True),
                                     "n_trio": len(trio), "n_tri": len(tri)}
             r["result"] = True
@@ -178,6 +183,7 @@ def main():
     if res_day is not None:
         D.write(f"results/{date}.json", res_day)
         O.write(f"exotic/{date}.json", ex_day, gz=True)
+        O.write(f"pairs/{date}.json", pr_day, gz=True)
     if races and all(r["result"] for r in races.values()):
         Path(a.done_flag).write_text("all done")
         print(f"{date}: 全{len(races)}レースの結果まで取り終えました")
@@ -196,6 +202,23 @@ def _race_rows(html: str):
         m = re.search(r"(\d+)時(\d+)分", t)
         if card:
             yield {"card": card[0], "odds": odds[0] if odds else None, "post": f"{int(m[1]):02d}:{int(m[2]):02d}" if m else None}
+
+
+PAIR_PAGES = {"waku": "pw153ou", "umaren": "pw154ou", "wide": "pw155ou", "umatan": "pw156ou"}
+
+
+def _fetch_pairs(cl, tf_html: str, rid: str, nos: list[int]) -> dict:
+    """枠連・馬連・ワイド・馬単のオッズ（取れなかった券種は入れない＝取得不可）"""
+    out = {}
+    for kind, pre in PAIR_PAGES.items():
+        c = [x for x in jra.links(tf_html, pre) if (jra.race_key(x) or {}).get("id") == rid]
+        if not c:
+            continue
+        try:
+            out[kind] = odds_codec.pack_pairs(nos, jra.parse_odds_pairs(cl.get("/JRADB/accessO.html", c[0])), kind)
+        except RuntimeError as e:
+            print("  取得できず", rid, kind, e)
+    return out
 
 
 def _exotic_links(tf_html: str, rid: str):

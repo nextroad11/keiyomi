@@ -1,0 +1,64 @@
+name: 過去の枠連・馬連・ワイド・馬単オッズの取り込み
+# 過去結果の各レースについて、確定の枠連・馬連・ワイド・馬単オッズを1回48分ずつ取り込む（1時間おきに続きから）。
+# 置き場は odds ブランチ（容量が大きいので data ブランチとは分ける）。取り終えたら何もせずに終わる。
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/pairs-history.yml", "scraper/pairs_history.py"]
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pairs-history
+  cancel-in-progress: false
+jobs:
+  odds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: data・odds ブランチ
+        run: |
+          url="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+          git clone -q --depth 1 --branch data "$url" data
+          if git ls-remote --exit-code --heads origin odds >/dev/null; then
+            git clone -q --depth 1 --branch odds "$url" odds
+          else
+            mkdir odds && cd odds && git init -q -b odds && git remote add origin "$url"
+            echo "# odds ブランチ（暗号化した3連複・3連単オッズ）" > README.md
+          fi
+      - name: 取り終えていれば終わる
+        run: |
+          python3 - <<'EOF'
+          import json, os, pathlib
+          st = pathlib.Path("odds/pairs_state.json")
+          done = set(json.loads(st.read_text())["done"]) if st.exists() else set()
+          hist = json.loads(pathlib.Path("data/history/state.json").read_text())["done"]
+          left = len(set(hist) - done)
+          print(f"残り {left} レース")
+          if left == 0:
+              open(os.environ["GITHUB_ENV"], "a").write("skip=1\n")
+          EOF
+      - uses: actions/setup-python@v5
+        if: env.skip != '1'
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: scraper/requirements.txt }
+      - if: env.skip != '1'
+        run: pip install -r scraper/requirements.txt
+      - name: 取り込み（48分まで）
+        if: env.skip != '1'
+        env:
+          APP_PASS: ${{ secrets.APP_PASS }}
+        run: python scraper/pairs_history.py --data data --odds odds --minutes 48
+      - name: 保存
+        if: always() && env.skip != '1'
+        working-directory: odds
+        run: |
+          git config user.name "keiyomi-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -q -m "枠連・馬連・ワイド・馬単オッズ: $(python3 -c 'import json;print(len(json.load(open("pairs_state.json"))["done"]),"レース")')"
+          for i in 1 2 3 4; do git push -q -u origin odds && exit 0; git pull -q --rebase origin odds; done
+          exit 1
