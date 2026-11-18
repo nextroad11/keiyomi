@@ -1,26 +1,22 @@
 {
- "max_pages": 4,
- "max_depth": 0,
+ "max_pages": 40,
+ "max_depth": 2,
+ "follow": "TodayRaceInfo|RaceList|DebaTable|RaceMarkTable|Odds|Refund|MonthlyConveneInfo",
  "seeds": [
   [
-   "POST",
-   "/JRADB/accessO.html",
-   "pw153ou1005202605030120261114Z/D1"
+   "GET",
+   "https://www.keiba.go.jp/KeibaWeb/TodayRaceInfo/TodayRaceInfoTop",
+   null
   ],
   [
-   "POST",
-   "/JRADB/accessO.html",
-   "pw154ou1005202605030120261114Z/55"
+   "GET",
+   "https://www.keiba.go.jp/KeibaWeb/TodayRaceInfo/TodayRaceInfoTop?k_raceDate=2026%2f11%2f17",
+   null
   ],
   [
-   "POST",
-   "/JRADB/accessO.html",
-   "pw155ou1005202605030120261114Z/D9"
-  ],
-  [
-   "POST",
-   "/JRADB/accessO.html",
-   "pw156ou1005202605030120261114Z/5D"
+   "GET",
+   "https://www.keiba.go.jp/KeibaWeb/MonthlyConveneInfo/MonthlyConveneInfoTop?k_year=2021&k_month=11",
+   null
   ]
  ]
 }

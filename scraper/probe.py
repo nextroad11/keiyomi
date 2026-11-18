@@ -72,20 +72,21 @@ def main():
         key = (url, cname)
         if key in seen:
             continue
-        kind = url.split("/")[-1]
-        if cname and depth > 0 and kinds[kind] >= PER_KIND:
+        kind = url.split("?")[0].rstrip("/").split("/")[-1]
+        if depth > 0 and kinds[kind] >= (PER_KIND if cname else 3):
             continue
         seen.add(key); kinds[kind] += 1
         try:
+            full = url if url.startswith("http") else BASE + url
             if method == "POST":
-                r = s.post(BASE + url, data={"cname": cname}, timeout=20)
+                r = s.post(full, data={"cname": cname}, timeout=20)
             else:
-                r = s.get(BASE + url, timeout=20)
+                r = s.get(full, timeout=20)
             status, body, ctype = r.status_code, r.content, r.headers.get("content-type", "")
         except Exception as e:  # 届かない・タイムアウト
             status, body, ctype = f"ERR {type(e).__name__}", b"", ""
         n = len(log)
-        name = f"{n:02d}_{kind.replace('.html', '') or 'index'}.html"
+        name = f"{n:02d}_{re.sub(r'[^A-Za-z0-9_]', '', kind.replace('.html', '')) or 'index'}.html"
         files[name] = body
         text = decode(body, ctype) if body else ""
         title = (re.search(r"<title>(.*?)</title>", text, re.S) or [None, ""])[1].strip()[:60]
@@ -93,6 +94,14 @@ def main():
         log.append({"n": n, "method": method, "url": url, "cname": cname, "status": status,
                     "bytes": len(body), "title": title, "links": len(found), "depth": depth})
         print(n, method, url, cname, status, len(body), title, f"links={len(found)}", flush=True)
+        if depth < max_depth and url.startswith("https://www.keiba.go.jp"):
+            import html as _h
+            for href in re.findall(r'href="([^"#]+)"', text):
+                href = _h.unescape(href)
+                if href.startswith("/"):
+                    href = "https://www.keiba.go.jp" + href
+                if href.startswith("https://www.keiba.go.jp/KeibaWeb/") and follow.search(href) and (href, None) not in seen:
+                    q.append(("GET", href, None, depth + 1))
         if depth < max_depth:
             for u, c in found:
                 if u.startswith("/JRADB/") and follow.search(c):
