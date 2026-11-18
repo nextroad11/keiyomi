@@ -2,10 +2,10 @@
  {
   "n": 0,
   "method": "GET",
-  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/RaceDataDownload?type=monthly&k_year=2026&k_month=10",
+  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2026&k_month=6",
   "cname": null,
   "status": 200,
-  "bytes": 1420092,
+  "bytes": 10481574,
   "title": "",
   "links": 0,
   "depth": 0
@@ -13,7 +13,7 @@
  {
   "n": 1,
   "method": "GET",
-  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2021&k_month=11",
+  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2026&k_month=1",
   "cname": null,
   "status": 200,
   "bytes": 661,
@@ -24,7 +24,7 @@
  {
   "n": 2,
   "method": "GET",
-  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2017&k_month=1",
+  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2025&k_month=11",
   "cname": null,
   "status": 200,
   "bytes": 661,
@@ -35,10 +35,10 @@
  {
   "n": 3,
   "method": "GET",
-  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/RaceDataDownload?type=monthly&k_year=2017&k_month=1",
+  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2025&k_month=6",
   "cname": null,
   "status": 200,
-  "bytes": 1037359,
+  "bytes": 661,
   "title": "",
   "links": 0,
   "depth": 0
@@ -46,11 +46,22 @@
  {
   "n": 4,
   "method": "GET",
-  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/DataDownloadTop",
+  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2024&k_month=11",
   "cname": null,
   "status": 200,
-  "bytes": 8053,
-  "title": "エラー",
+  "bytes": 661,
+  "title": "",
+  "links": 0,
+  "depth": 0
+ },
+ {
+  "n": 5,
+  "method": "GET",
+  "url": "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2023&k_month=11",
+  "cname": null,
+  "status": 200,
+  "bytes": 661,
+  "title": "",
   "links": 0,
   "depth": 0
  }
