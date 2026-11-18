@@ -123,3 +123,65 @@ def picks(n, probs, odds_tri, odds_trio):
         idx = np.where(okt & want & (ev >= r["th"]))[0]
         res["tri"] = [int(i) for i in idx[np.argsort(-ev[idx])][: r["cap"]]]
     return res
+
+
+# ---------- ほかの券種（単勝・複勝・枠連・馬連・ワイド・馬単）：検証中。記録だけ付ける ----------
+# 重みと条件は model/experiments/17・18（学習〜2025-05、条件は基準決め期間）で決めたもの。REPORT.md 第5回。
+PAIR_W = {"単勝": [0.7218, 0.5118, -0.1386], "複勝": [-0.2985, 1.5858, 0.0328, 0.5712], "枠連": [0.2734, 0.7338, 0.0821],
+          "馬連": [0.8137, 0.4801, -0.2247], "ワイド": [0.6714, 0.8215, -0.3585, 1.2368], "馬単": [0.862, 0.5233, -0.3238]}
+PAIR_RULES = {"単勝": {"th": 1.0, "pmin": 0, "omin": 0}, "複勝": {"th": 1.0, "pmin": 0.2, "omin": 2},
+              "枠連": {"th": 1.1, "pmin": 0.05, "omin": 10}, "馬連": {"th": 1.0, "pmin": 0, "omin": 0},
+              "ワイド": {"th": 1.0, "pmin": 0.05, "omin": 5}, "馬単": {"th": 1.0, "pmin": 0, "omin": 0}}
+PAIR_KIND = {"枠連": "waku", "馬連": "umaren", "ワイド": "wide", "馬単": "umatan"}
+
+
+def pair_tables(pt, n, waku):
+    P, C, _ = X.perms(n)
+    win = np.bincount(P[:, 0], pt, n)
+    top3 = win + np.bincount(P[:, 1], pt, n) + np.bincount(P[:, 2], pt, n)
+    ex = np.zeros((n, n)); np.add.at(ex, (P[:, 0], P[:, 1]), pt)
+    wd = np.zeros((n, n))
+    for i, j in ((0, 1), (0, 2), (1, 2)):
+        a, b = np.minimum(P[:, i], P[:, j]), np.maximum(P[:, i], P[:, j]); np.add.at(wd, (a, b), pt)
+    out = {"単勝": {(i,): win[i] for i in range(n)}, "複勝": {(i,): top3[i] for i in range(n)},
+           "馬単": {(i, j): ex[i, j] for i in range(n) for j in range(n) if i != j},
+           "馬連": {(i, j): ex[i, j] + ex[j, i] for i in range(n) for j in range(i + 1, n)},
+           "ワイド": {(i, j): wd[i, j] for i in range(n) for j in range(i + 1, n)}}
+    wk = {}
+    if waku and None not in waku:
+        for (i, j), p in out["馬連"].items():
+            k = tuple(sorted((waku[i], waku[j]))); wk[k] = wk.get(k, 0) + p
+    out["枠連"] = wk
+    return out
+
+
+def pair_picks(sa, sm, nos, waku, win_odds: dict, place_odds: dict, pairs: dict) -> dict:
+    """券種ごとの候補 [{c, p, o, ev}]。オッズが取得不可の券種は入れない。"""
+    n = len(nos)
+    A, M = pair_tables(X.pl_tri(sa), n, waku), pair_tables(X.pl_tri(sm), n, waku)
+    res = {}
+    for t, w in PAIR_W.items():
+        if t == "単勝":
+            od = {(i,): win_odds.get(no) for i, no in enumerate(nos)}
+        elif t == "複勝":
+            od = {(i,): place_odds.get(no) for i, no in enumerate(nos)}
+        elif t == "枠連":
+            od = {k: (pairs.get("waku") or {}).get(k) for k in A["枠連"]}
+        else:
+            src = pairs.get(PAIR_KIND[t]) or {}
+            od = {k: src.get((nos[k[0]], nos[k[1]])) for k in A[t]}
+            if t == "ワイド":
+                od = {k: (v[0] if v else None) for k, v in od.items()}
+        keys = [k for k in A[t] if od.get(k)]
+        if len(keys) < 2:
+            continue
+        o = np.array([od[k] for k in keys], float); q = 1 / o
+        Xm = np.stack([np.log(q / q.sum()), np.log(np.array([A[t][k] for k in keys]) + 1e-12), np.log(np.array([M[t][k] for k in keys]) + 1e-12)], 1)
+        s = Xm @ np.array(w[:3])
+        p = 1 / (1 + np.exp(-(s + w[3]))) if t in ("複勝", "ワイド") else np.exp(s - s.max()) / np.exp(s - s.max()).sum()
+        ev = p * o; r = PAIR_RULES[t]
+        idx = [i for i in np.argsort(-ev) if ev[i] >= r["th"] and p[i] >= r["pmin"] and o[i] >= r["omin"]]
+        lab = (lambda k: str(nos[k[0]])) if t in ("単勝", "複勝") else (lambda k: f"{k[0]}-{k[1]}") if t == "枠連" else \
+              (lambda k: f"{nos[k[0]]}→{nos[k[1]]}") if t == "馬単" else (lambda k: f"{nos[k[0]]}-{nos[k[1]]}")
+        res[t] = [{"c": lab(keys[i]), "p": round(float(p[i]), 4), "o": float(o[i]), "ev": round(float(ev[i]), 3)} for i in idx]
+    return res

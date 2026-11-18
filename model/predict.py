@@ -122,6 +122,12 @@ def predict_race(rid, r, rows, ex_snaps, model):
         pk = prod.picks(n, probs, o_t, o_f)
         p_t, _ = probs["t"]; p_f, _ = probs["f"]
         out["ex_at"], out["ex_mins"] = ex["at"], ex["mins"]
+        # ほかの券種（検証中）
+        if ex.get("pairs") or odds_now:
+            pr = {k: odds_codec.unpack_pairs(enos, v, k) for k, v in (ex.get("pairs") or {}).items()}
+            wk = [names.get(no, {}).get("waku") for no in nos]
+            out["others"] = prod.pair_picks(sa, sm, nos, wk, {k: v.get("win") for k, v in odds_now.items()},
+                                            {k: v.get("pmin") for k, v in odds_now.items()}, pr)
         out["man"] = round(float(p_t[o_t >= 100].sum()), 4) if p_t is not None else None
         out["trio"] = [{"c": combo_str(C[i], nos, False), "p": round(float(p_f[i]), 4), "o": float(o_f[i]), "ev": round(float(p_f[i] * o_f[i]), 3)} for i in pk["trio"]]
         out["tri"] = [{"c": combo_str(P[i], nos, True), "p": round(float(p_t[i]), 5), "o": float(o_t[i]), "ev": round(float(p_t[i] * o_t[i]), 3)} for i in pk["tri"]]
@@ -146,6 +152,7 @@ def score(paper, race_res):
         return y
     t = {"trio": {"pts": len(paper["trio"]), "ret": hit("3連複", paper["trio"])},
          "tri": {"pts": len(paper["tri"]), "ret": hit("3連単", paper["tri"])}}
+    t["others"] = {k: {"pts": len(v), "ret": hit(k, v)} for k, v in (paper.get("others") or {}).items()}
     t["trio_pay"] = (pay.get("3連複") or [{}])[0].get("yen"); t["tri_pay"] = (pay.get("3連単") or [{}])[0].get("yen")
     order = sorted([x for x in race_res.get("runners", []) if x.get("pos")], key=lambda x: x["pos"])[:3]
     t["top3"] = [x["no"] for x in order]
@@ -180,10 +187,10 @@ def main():
         if "paper" in prev:
             p["paper"] = prev["paper"]
         elif p.get("ex_mins") is not None and p["ex_mins"] <= FREEZE_AT:
-            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", [])}
+            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {})}
         elif rid in res and p.get("ex_mins") is not None and p["ex_mins"] <= 30.5:
             # 5分前が取れずに発走した：取れた中で一番遅い締切前のオッズで固定（何分前かを残す）
-            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "late": True}
+            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {}), "late": True}
         if rid in res:
             p["result"] = score(p.get("paper") or {"trio": [], "tri": []}, res[rid])
             if "paper" not in p:
@@ -200,7 +207,7 @@ def main():
                         ref = {"trio": q["trio"], "tri": q["tri"]}
                         p["ref"] = {**ref, "result": score(ref, res[rid])}
             # 発走後は、締切前の最後の予想のまま残す（確定オッズで計算し直さない）
-            for k in ("horses", "trio", "tri", "trio_top", "man", "favout", "odds_at", "odds_mins", "ex_at", "ex_mins", "fav"):
+            for k in ("horses", "trio", "tri", "trio_top", "others", "man", "favout", "odds_at", "odds_mins", "ex_at", "ex_mins", "fav"):
                 if k in prev:
                     p[k] = prev[k]
         new["races"][rid] = p

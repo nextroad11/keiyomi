@@ -323,6 +323,16 @@ function renderRace(){
   html += `<div class="card"><h2>3連単の候補 <span class="sub">検証中・48点まで</span></h2>
     ${(p.tri||[]).length?comboTable(p.tri,"tri",hkt):`<p class="muted" style="margin:0">候補なし。</p>`}
     <p class="note" style="margin-top:6px">3連複の候補の3頭の並びのうち、3連単でも期待値1.0以上の組。過去の検証で数回の高配当頼みだったため、まだ採用していません。</p></div>`;
+  const oth = p.others || {};
+  const OT = ["単勝","複勝","枠連","馬連","ワイド","馬単"];
+  if(OT.some(t=>oth[t])){
+    const hitOf = t => { if(!top3.length) return null; if(t==="単勝") return String(top3[0]); if(t==="馬単") return top3[0]+"-"+top3[1];
+      if(t==="馬連") return [top3[0],top3[1]].sort((a,b)=>a-b).join("-"); return null; };
+    html += `<div class="card"><h2>ほかの券種の候補 <span class="sub">検証中・記録だけ</span></h2>
+      ${OT.filter(t=>oth[t]).map(t=>`<div style="margin-top:6px"><b>${t}</b> ${oth[t].length?"":'<span class="small muted">候補なし</span>'}
+        ${oth[t].length?comboTable(oth[t],"trio",hitOf(t)):""}</div>`).join("")}
+      <p class="note" style="margin-top:6px">期待値1.0以上の組（ワイド・複勝は下限オッズで計算）。過去の検証では、どれも数回の大穴頼みか前後半で結果がばらばらで、まだ採用していません。実戦の記録で確かめています。</p></div>`;
+  }
   if(p.paper){ html += `<div class="card"><h2>記録した買い目 <span class="sub">${minsLabel(p.paper.mins)}で固定${p.paper.late?"（5分前が取れず）":""}</span></h2>
     <div class="small">3連複 ${p.paper.trio.length}点：${p.paper.trio.map(x=>esc(x.c)).join("、")||"なし"}</div>
     <div class="small" style="margin-top:4px">3連単 ${p.paper.tri.length}点：${p.paper.tri.slice(0,12).map(x=>esc(x.c)).join("、")||"なし"}${p.paper.tri.length>12?" ほか":""}</div></div>`; }
@@ -345,6 +355,11 @@ function renderRecord(){
     <div class="tile"><div class="k">3連単（検証中） 回収率</div><div class="v ${X.roi>=1?"pos":X.roi!=null?"neg":""}">${X.roi!=null?pct(X.roi,1):"—"}</div><div class="small muted">${X.races}R・${X.pts}点・的中${X.hit}</div></div>
     <div class="tile"><div class="k">3連単 収支</div><div class="v ${X.ret-X.pts*100>=0?"pos":"neg"}" style="font-size:22px">${X.pts?yen(X.ret-X.pts*100):"—"}</div><div class="small muted">購入 ${yen(X.pts*100)}</div></div>
   </div>`;
+  const OT=["単勝","複勝","枠連","馬連","ワイド","馬単"], os={};
+  rs.forEach(r=>Object.entries(r.others||{}).forEach(([t,x])=>{ if(!x.pts) return; const o=os[t]=os[t]||{pts:0,ret:0,hit:0,races:0}; o.pts+=x.pts; o.ret+=x.ret||0; o.races++; if(x.ret) o.hit++; }));
+  if(Object.keys(os).length) html += `<div class="card"><h2>ほかの券種（検証中）</h2><div class="tw"><table><thead><tr><th>券種</th><th class="r">レース</th><th class="r">点数</th><th class="r">的中</th><th class="r">回収率</th></tr></thead><tbody>
+    ${OT.filter(t=>os[t]).map(t=>{const o=os[t]; return `<tr><td>${t}</td><td class="r num">${o.races}</td><td class="r num">${o.pts}</td><td class="r num">${o.hit}</td><td class="r num ${o.ret>=o.pts*100?"pos":"neg"}">${pct(o.ret/(o.pts*100),1)}</td></tr>`;}).join("")}
+    </tbody></table></div></div>`;
   html += `<div class="card"><h2>回収率の推移 <span class="sub">記録を積み上げた累計</span></h2>${chart(rs)}</div>`;
   const byDate = {}; rs.forEach(r=>{ const d=byDate[r.date]=byDate[r.date]||{n:0,tp:0,tr:0,xp:0,xr:0}; d.n++; d.tp+=r.trio?.pts||0; d.tr+=r.trio?.ret||0; d.xp+=r.tri?.pts||0; d.xr+=r.tri?.ret||0; });
   html += `<div class="card"><h2>開催日ごと</h2>${Object.keys(byDate).length?`<div class="tw"><table><thead><tr><th>日付</th><th class="r">記録</th><th class="r">3連複</th><th class="r">回収率</th><th class="r">3連単</th><th class="r">回収率</th></tr></thead><tbody>
