@@ -1,5 +1,5 @@
 name: 過去データの取り込み
-# 過去60か月の結果を、1回40分ずつ小分けに取り込む（1時間おきに自動で続きから）。
+# 過去120か月（10年）の結果を、1回40分ずつ小分けに取り込む（1時間おきに自動で続きから）。
 # 取り終えたら何もせずに終わる。合言葉（APP_PASS）が未設定なら何もしない（ログにそう出る）。
 on:
   push:
@@ -11,7 +11,7 @@ on:
     inputs:
       months:
         description: "さかのぼる月数"
-        default: "60"
+        default: "120"
 permissions:
   contents: write
 concurrency:
@@ -41,7 +41,7 @@ jobs:
         if: env.skip != '1'
         env:
           APP_PASS: ${{ secrets.APP_PASS }}
-        run: python scraper/history.py --data data --months "${{ inputs.months || '60' }}" --minutes 40
+        run: python scraper/history.py --data data --months "${{ inputs.months || '120' }}" --minutes 40
       - name: 保存
         if: always() && env.skip != '1'
         working-directory: data
