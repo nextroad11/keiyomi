@@ -1,21 +1,30 @@
 {
- "max_pages": 40,
- "max_depth": 2,
- "follow": "TodayRaceInfo|RaceList|DebaTable|RaceMarkTable|Odds|Refund|MonthlyConveneInfo",
+ "max_pages": 5,
+ "max_depth": 0,
  "seeds": [
   [
    "GET",
-   "https://www.keiba.go.jp/KeibaWeb/TodayRaceInfo/TodayRaceInfoTop",
+   "https://www.keiba.go.jp/KeibaWeb/DataDownload/RaceDataDownload?type=monthly&k_year=2026&k_month=10",
    null
   ],
   [
    "GET",
-   "https://www.keiba.go.jp/KeibaWeb/TodayRaceInfo/TodayRaceInfoTop?k_raceDate=2026%2f11%2f17",
+   "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2021&k_month=11",
    null
   ],
   [
    "GET",
-   "https://www.keiba.go.jp/KeibaWeb/MonthlyConveneInfo/MonthlyConveneInfoTop?k_year=2021&k_month=11",
+   "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2017&k_month=1",
+   null
+  ],
+  [
+   "GET",
+   "https://www.keiba.go.jp/KeibaWeb/DataDownload/RaceDataDownload?type=monthly&k_year=2017&k_month=1",
+   null
+  ],
+  [
+   "GET",
+   "https://www.keiba.go.jp/KeibaWeb/DataDownload/DataDownloadTop",
    null
   ]
  ]
