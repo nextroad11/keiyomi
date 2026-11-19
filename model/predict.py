@@ -153,6 +153,13 @@ def score(paper, race_res):
     t = {"trio": {"pts": len(paper["trio"]), "ret": hit("3連複", paper["trio"])},
          "tri": {"pts": len(paper["tri"]), "ret": hit("3連単", paper["tri"])}}
     t["others"] = {k: {"pts": len(v), "ret": hit(k, v)} for k, v in (paper.get("others") or {}).items()}
+    # 実際の金額での成績（本番の賭け方）
+    def money(kind, picks):
+        rows = {r["combo"].replace(" ", ""): r["yen"] for r in pay.get(kind, [])}
+        cost = sum(x.get("y", 0) for x in picks)
+        ret = sum(rows.get(x["c"].replace("→", "-"), 0) * x.get("y", 0) / 100 for x in picks)
+        return {"cost": cost, "ret": round(ret)}
+    t["money"] = {"trio": money("3連複", paper["trio"]), "tri": money("3連単", paper["tri"])}
     t["trio_pay"] = (pay.get("3連複") or [{}])[0].get("yen"); t["tri_pay"] = (pay.get("3連単") or [{}])[0].get("yen")
     order = sorted([x for x in race_res.get("runners", []) if x.get("pos")], key=lambda x: x["pos"])[:3]
     t["top3"] = [x["no"] for x in order]
@@ -181,9 +188,19 @@ def main():
     exf = O.read(f"exotic/{date}.json", {"races": {}})["races"]
     old = D.read(f"pred/{date}.json", {"date": date, "races": {}})
     new = {"date": date, "model": model["version"], "races": {}}
+    day_used, day_ev, cap = 0, 0.0, prod.DAY_CAP
     for rid, r in sorted(live["races"].items(), key=lambda kv: kv[1].get("post") or ""):
         prev = old["races"].get(rid, {})
         p = predict_race(rid, r, rows, exl.get(rid), model) or {"rid": rid, "post": r.get("post"), "venue": r.get("venue"), "rno": r.get("rno")}
+        # 金額（本線の3連複と、試験運用の3連単）。決まっていない買い目は、いまの残り予算で仮に計算する
+        if cap == prod.DAY_CAP and day_ev >= prod.BIG_EV:
+            cap = prod.BIG_CAP
+        room = cap - day_used
+        ent = [dict(e, t="trio") for e in p.get("trio", [])] + [dict(e, t="tri") for e in p.get("tri", [])]
+        if ent:
+            for e, v in zip(ent, prod.stakes(ent, room)):
+                (p["trio"] if e["t"] == "trio" else p["tri"])[[x["c"] for x in (p["trio"] if e["t"] == "trio" else p["tri"])].index(e["c"])]["y"] = v
+        p["cap"] = cap
         if "paper" in prev:
             p["paper"] = prev["paper"]
         elif p.get("ex_mins") is not None and p["ex_mins"] <= FREEZE_AT:
@@ -191,6 +208,9 @@ def main():
         elif rid in res and p.get("ex_mins") is not None and p["ex_mins"] <= 30.5:
             # 5分前が取れずに発走した：取れた中で一番遅い締切前のオッズで固定（何分前かを残す）
             p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {}), "late": True}
+        if "paper" in p:
+            for x in p["paper"].get("trio", []) + p["paper"].get("tri", []):
+                day_used += x.get("y", 0); day_ev += x.get("y", 0) * (x["p"] * x["o"] - 1)
         if rid in res:
             p["result"] = score(p.get("paper") or {"trio": [], "tri": []}, res[rid])
             if "paper" not in p:

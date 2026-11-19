@@ -245,8 +245,8 @@ function renderToday(){
       <div class="st">${status(r)}</div>
       ${done?resLine(r):""}
       <div class="meta">
-        ${nT?`<span class="chip gold">3連複 ${nT}点</span>`:`<span class="chip">見送り</span>`}
-        ${nX?`<span class="chip">3連単 ${nX}点（検証中）</span>`:""}
+        ${nT?`<span class="chip gold">3連複 ${nT}点 ${yen(r.trio.reduce((a,x)=>a+(x.y??100),0))}</span>`:`<span class="chip">見送り</span>`}
+        ${nX?`<span class="chip">3連単 ${nX}点 ${yen(r.tri.reduce((a,x)=>a+(x.y??0),0))}（試験）</span>`:""}
         ${r.man!=null?`<span class="chip">万馬券 ${pct(r.man)}</span>`:""}
         ${r.favout!=null?`<span class="chip">1番人気が飛ぶ ${pct(r.favout)}</span>`:""}
         ${r.odds_mins!=null && !done?`<span class="chip">${minsLabel(r.odds_mins)}のオッズ</span>`:""}
@@ -273,8 +273,9 @@ function refBlock(ref){
 }
 function comboTable(list, kind, hitKey){
   if(!list || !list.length) return "";
-  return `<div class="tw"><table><thead><tr><th>買い目</th><th class="r">AI確率</th><th class="r">オッズ</th><th class="r">期待値</th></tr></thead><tbody>
-    ${list.map(x=>`<tr class="${hitKey && x.c.replace(/→/g,"-")===hitKey?"hit":""}"><td class="combo">${esc(x.c)}</td><td class="r num">${pct(x.p,kind==="tri"?2:1)}</td><td class="r num">${x.o?x.o.toFixed(1)+"倍":NA}</td><td class="r num">${x.ev!=null?x.ev.toFixed(2):"—"}</td></tr>`).join("")}
+  const money = list.some(x=>x.y!=null);
+  return `<div class="tw"><table><thead><tr><th>買い目</th><th class="r">AI確率</th><th class="r">オッズ</th><th class="r">期待値</th>${money?'<th class="r">金額</th><th class="r">当たれば</th>':""}</tr></thead><tbody>
+    ${list.map(x=>`<tr class="${hitKey && x.c.replace(/→/g,"-")===hitKey?"hit":""}"><td class="combo">${esc(x.c)}</td><td class="r num">${pct(x.p,kind==="tri"?2:1)}</td><td class="r num">${x.o?x.o.toFixed(1)+"倍":NA}</td><td class="r num">${x.ev!=null?x.ev.toFixed(2):"—"}</td>${money?`<td class="r num"><b>${x.y?yen(x.y):"—"}</b></td><td class="r num">${x.y?yen(x.y*x.o):"—"}</td>`:""}</tr>`).join("")}
   </tbody></table></div>`;
 }
 function renderRace(){
@@ -317,8 +318,8 @@ function renderRace(){
         <td class="small muted" style="white-space:nowrap">${(h.past||[]).filter(Boolean).slice(0,3).map(x=>esc(String(x).replace(/\s*着/,""))).join("・")||"—"}</td></tr>`; }).join("")}
     </tbody></table></div>
     <p class="note" style="margin-top:6px">緑の勝率は、AIが人気（単勝オッズ）より1.3倍以上高く見ている馬。</p></div>`;
-  html += `<div class="card"><h2>3連複の買い目 <span class="sub">本線・各100円</span></h2>
-    ${(p.trio||[]).length?comboTable(p.trio,"trio",hk)+`<p class="small" style="margin:6px 0 0">合計 <b class="num">${yen(p.trio.length*100)}</b></p>`:`<p class="muted" style="margin:0">このレースは見送り（割に合う組がありません）。</p>`}
+  html += `<div class="card"><h2>3連複の買い目 <span class="sub">本線</span></h2>
+    ${(p.trio||[]).length?comboTable(p.trio,"trio",hk)+`<p class="small" style="margin:6px 0 0">合計 <b class="num">${yen(p.trio.reduce((a,x)=>a+(x.y??100),0))}</b>${p.cap>50000?' <span class="chip shu">勝負日</span>':""}</p>`:`<p class="muted" style="margin:0">このレースは見送り（割に合う組がありません）。</p>`}
     ${p.ex_mins!=null?`<p class="note" style="margin-top:6px">${minsLabel(p.ex_mins)}の3連複・3連単オッズで計算。</p>`:`<p class="note" style="margin-top:6px">3連複・3連単のオッズは、発走30分前から取れます。</p>`}</div>`;
   html += `<div class="card"><h2>3連単の買い目 <span class="sub">試験運用・48点まで</span></h2>
     ${(p.tri||[]).length?comboTable(p.tri,"tri",hkt):`<p class="muted" style="margin:0">候補なし。</p>`}
@@ -334,7 +335,7 @@ function renderRace(){
       <p class="note" style="margin-top:6px">期待値1.0以上の組（ワイド・複勝は下限オッズで計算）。過去の検証では、どれも数回の大穴頼みか前後半で結果がばらばらで、まだ採用していません。実戦の記録で確かめています。</p></div>`;
   }
   if(p.paper){ html += `<div class="card"><h2>AIの買い目（確定） <span class="sub">${minsLabel(p.paper.mins)}のオッズで決定${p.paper.late?"（5分前が取れず）":""}</span></h2>
-    <div class="small">3連複 ${p.paper.trio.length}点：${p.paper.trio.map(x=>esc(x.c)).join("、")||"なし"}</div>
+    <div class="small">3連複 ${p.paper.trio.length}点：${p.paper.trio.map(x=>esc(x.c)+(x.y?` ${yen(x.y)}`:"")).join("、")||"なし"}</div>
     <div class="small" style="margin-top:4px">3連単 ${p.paper.tri.length}点：${p.paper.tri.slice(0,12).map(x=>esc(x.c)).join("、")||"なし"}${p.paper.tri.length>12?" ほか":""}</div></div>`; }
   if((p.trio_top||[]).length) html += `<div class="card"><h2>参考：AIが当たりやすいと見る3連複 <span class="sub">買い目ではない</span></h2>${comboTable(p.trio_top,"trio",hk)}
     <p class="note" style="margin-top:6px">当たりやすい組でも、期待値が1.0未満ならオッズが割に合わないので候補にしません。</p></div>`;
@@ -348,7 +349,17 @@ function renderRecord(){
   const rs = Object.values(REC?.races||{}).sort((a,b)=>(a.date+a.rid).localeCompare(b.date+b.rid));
   const sum = k => { let pts=0, ret=0, hit=0, races=0; rs.forEach(r=>{ const x=r[k]||{}; if(x.pts){ races++; pts+=x.pts; ret+=x.ret||0; if(x.ret) hit++; } }); return {pts,ret,hit,races,roi:pts?ret/(pts*100):null}; };
   const T=sum("trio"), X=sum("tri");
-  let html = `<div class="banner"><b>本番の成績</b>：締切5分前に決めたAIの買い目を、各100円で買ったとして実際の払戻で採点しています（お金は賭けていません）。回収率の判断には数百レースが必要です（いま ${rs.length}レース）。</div>
+  const M = k => { let c=0, r=0; rs.forEach(x=>{ const m=x.money?.[k]; if(m){ c+=m.cost; r+=m.ret; } }); return {c,r,roi:c?r/c:null}; };
+  const MT=M("trio"), MX=M("tri"), MA={c:MT.c+MX.c, r:MT.r+MX.r}; MA.roi = MA.c? MA.r/MA.c : null;
+  let html = `<div class="banner"><b>本番の成績</b>：締切5分前に決めたAIの買い目を、AIが決めた金額で買ったとして実際の払戻で採点しています（お金は賭けていません）。回収率の判断には数百レースが必要です（いま ${rs.length}レース）。</div>
+  <div class="card"><h2>本番の賭け方での成績 <span class="sub">1レース3万円・1日5万円（勝負日10万円）まで</span></h2>
+    <div class="tiles">
+      <div class="tile"><div class="k">回収率（3連複＋3連単）</div><div class="v ${MA.roi>=1?"pos":MA.roi!=null?"neg":""}">${MA.roi!=null?pct(MA.roi,1):"—"}</div></div>
+      <div class="tile"><div class="k">収支</div><div class="v ${MA.r-MA.c>=0?"pos":"neg"}" style="font-size:22px">${MA.c?yen(MA.r-MA.c):"—"}</div><div class="small muted">投資 ${yen(MA.c)} ／ 払戻 ${yen(MA.r)}</div></div>
+      <div class="tile"><div class="k">3連複</div><div class="v" style="font-size:22px">${MT.roi!=null?pct(MT.roi,1):"—"}</div><div class="small muted">投資 ${yen(MT.c)}</div></div>
+      <div class="tile"><div class="k">3連単（試験）</div><div class="v" style="font-size:22px">${MX.roi!=null?pct(MX.roi,1):"—"}</div><div class="small muted">投資 ${yen(MX.c)}</div></div>
+    </div></div>
+  <div class="small muted" style="margin-top:4px">参考：各100円均等で買った場合</div>
   <div class="tiles">
     <div class="tile"><div class="k">3連複 回収率</div><div class="v ${T.roi>=1?"pos":T.roi!=null?"neg":""}">${T.roi!=null?pct(T.roi,1):"—"}</div><div class="small muted">${T.races}R・${T.pts}点・的中${T.hit}</div></div>
     <div class="tile"><div class="k">3連複 収支</div><div class="v ${T.ret-T.pts*100>=0?"pos":"neg"}" style="font-size:22px">${T.pts?yen(T.ret-T.pts*100):"—"}</div><div class="small muted">購入 ${yen(T.pts*100)}</div></div>

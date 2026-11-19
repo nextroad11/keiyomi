@@ -185,3 +185,26 @@ def pair_picks(sa, sm, nos, waku, win_odds: dict, place_odds: dict, pairs: dict)
               (lambda k: f"{nos[k[0]]}→{nos[k[1]]}") if t == "馬単" else (lambda k: f"{nos[k[0]]}-{nos[k[1]]}")
         res[t] = [{"c": lab(keys[i]), "p": round(float(p[i]), 4), "o": float(o[i]), "ev": round(float(ev[i]), 3)} for i in idx]
     return res
+
+
+# ---------- 金額の決め方（本番の賭け方。REPORT.md 第6回） ----------
+# 1点の金額＝ケリー基準×0.25（基準の元手100万円）、100円単位・最低100円。1レース30,000円まで。
+# 1日50,000円まで。その日すでに決めた買い目の見込み利益が6,000円を超えたら「勝負日」として1日100,000円まで。
+KELLY, BANK, RACE_CAP, DAY_CAP, BIG_CAP, BIG_EV = 0.25, 1_000_000, 30000, 50000, 100000, 6000
+
+
+def stakes(entries: list[dict], room: int) -> list[int]:
+    """entries: [{p, o}]（期待値の高い順）。room: この日に残っている予算。戻り値: 各組の金額（0は買わない）"""
+    st = []
+    for e in entries:
+        p, o = e["p"], e["o"]
+        f = max(0.0, (p * o - 1) / (o - 1)) * KELLY if o > 1 else 0
+        st.append(max(100, int(round(BANK * f / 100)) * 100))
+    cap = min(RACE_CAP, max(0, room))
+    tot = sum(st)
+    if tot > cap:
+        s = cap / tot if tot else 0
+        st = [int(v * s / 100) * 100 for v in st]
+        while sum(st) > cap:
+            i = min((i for i, v in enumerate(st) if v), key=lambda i: entries[i]["p"] * entries[i]["o"]); st[i] = 0
+    return st
