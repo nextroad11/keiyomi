@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:lang="ja" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f7a48"/>
+      <stop offset="0.55" stop-color="#11482b"/>
+      <stop offset="1" stop-color="#08261a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.32" cy="0.22" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6dd8a"/>
+      <stop offset="0.5" stop-color="#e3b33d"/>
+      <stop offset="1" stop-color="#b9860f"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f1eedd"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <!-- 芝のコース（楕円の内ラチ・外ラチ） -->
+  <g transform="rotate(-14 512 540)" fill="none">
+    <ellipse cx="512" cy="540" rx="420" ry="250" stroke="#ffffff" stroke-opacity="0.10" stroke-width="54"/>
+    <ellipse cx="512" cy="540" rx="420" ry="250" stroke="url(#gold)" stroke-width="10" stroke-dasharray="1900 760" stroke-linecap="round"/>
+  </g>
+  <!-- 先頭の馬の位置（光る点） -->
+  <circle cx="903" cy="417" r="34" fill="#f6dd8a" opacity="0.25"/>
+  <circle cx="903" cy="417" r="17" fill="#fff6d6"/>
+  <!-- 競 -->
+  <text x="478" y="668" text-anchor="middle" font-family="Noto Sans CJK JP" font-weight="900" font-size="480" fill="url(#ink)" filter="url(#sh)">競</text>
+  <!-- AI の朱印 -->
+  <g transform="translate(790 810) rotate(-6) scale(0.82)" filter="url(#sh)">
+    <rect x="-108" y="-80" width="216" height="160" rx="26" fill="#d2261b"/>
+    <rect x="-94" y="-66" width="188" height="132" rx="16" fill="none" stroke="#ffe9e4" stroke-opacity="0.55" stroke-width="5"/>
+    <text x="0" y="44" text-anchor="middle" font-family="Noto Sans CJK JP" font-weight="900" font-size="124" fill="#fff" letter-spacing="4">AI</text>
+  </g>
+</svg>
