@@ -223,7 +223,7 @@ function status(p){
   if(p.paper) return '<span class="chip turf">買い目確定</span>';
   return '<span class="chip">発走前</span>';
 }
-function minsLabel(m){ return m==null ? "" : (m<=1.2 ? "1分前" : Math.round(m)+"分前"); }
+function minsLabel(m){ return m==null ? "" : (m>120 ? "前日" : m<=1.2 ? "1分前" : Math.round(m)+"分前"); }
 
 /* ---------- レース一覧 ---------- */
 function renderToday(){

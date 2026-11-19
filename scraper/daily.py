@@ -47,10 +47,11 @@ def main():
     ap.add_argument("--odds", default="odds")
     ap.add_argument("--done-flag", default="/tmp/daily_done")
     ap.add_argument("--date", default=None, help="テスト用 YYYYMMDD")
+    ap.add_argument("--preview", action="store_true", help="前日の夜：翌日の出馬表と前日発売のオッズだけ取る")
     a = ap.parse_args()
     t0 = time.time()
     now = now_jst()
-    date = a.date or now.strftime("%Y%m%d")
+    date = a.date or (now + dt.timedelta(days=1 if a.preview else 0)).strftime("%Y%m%d")
     D, O = Store(Path(a.data)), Store(Path(a.odds))
     cl = jra.Client()
     live = D.read(f"live/{date}.json", None)
@@ -80,10 +81,11 @@ def main():
     for rid, r in sorted(races.items(), key=lambda kv: kv[1]["post"] or "99"):
         if time.time() - t0 > BUDGET:
             break
-        if r["card"] is None:
+        stale = r["card"] is not None and not a.preview and r.get("card_day", date) != now.strftime("%Y%m%d")
+        if r["card"] is None or stale or (a.preview and not r["odds_cname"] and _ago(r.get("card_at")) >= PREVIEW_EVERY):
             try:
                 html = cl.get("/JRADB/accessD.html", r["card_cname"])
-                r["card"] = jra.parse_card(html)
+                r["card"] = jra.parse_card(html); r["card_day"] = now.strftime("%Y%m%d"); r["card_at"] = now.isoformat(timespec="seconds")
                 odds = [c for c in jra.links(html, "pw151ou") if (jra.race_key(c) or {}).get("id") == rid]
                 r["odds_cname"] = odds[0] if odds else r["odds_cname"]
             except RuntimeError as e:
@@ -91,6 +93,11 @@ def main():
 
     # 2. 締切前のオッズ
     ex_live = None
+    if a.preview:
+        _preview_odds(cl, O, date, races, t0)
+        D.write(f"live/{date}.json", live)
+        print(f"アクセス {cl.count}回 {time.time()-t0:.0f}秒")
+        return
     for rid, r in sorted(races.items(), key=lambda kv: kv[1]["post"] or "99"):
         if time.time() - t0 > BUDGET or not r["post"]:
             continue
@@ -188,6 +195,47 @@ def main():
         Path(a.done_flag).write_text("all done")
         print(f"{date}: 全{len(races)}レースの結果まで取り終えました")
     print(f"アクセス {cl.count}回 {time.time()-t0:.0f}秒")
+
+
+PREVIEW_EVERY = 30  # 前日発売のオッズを取り直す間隔（分）
+
+
+def _ago(stamp) -> float:
+    """その時刻から何分たったか（無ければとても大きい数）"""
+    return 1e9 if not stamp else (now_jst() - dt.datetime.fromisoformat(stamp)).total_seconds() / 60
+
+
+def _preview_odds(cl, O, date, races, t0):
+    """前日の夜：前日発売のオッズを「前日」という時点として残す（発走何分前かも記録。当日の時点とは別枠）。
+    買い目の確定（5分前）には使わない。予想を早めに見るためだけ。"""
+    ex_live = O.read(f"live/{date}.json", {"races": {}})
+    changed = False
+    for rid, r in sorted(races.items(), key=lambda kv: kv[1]["post"] or "99"):
+        if time.time() - t0 > BUDGET or not r["post"] or not r["odds_cname"]:
+            continue
+        if _ago((r["tf"].get("前日") or {}).get("at")) < PREVIEW_EVERY:
+            continue
+        post = dt.datetime.strptime(date + r["post"], "%Y%m%d%H:%M").replace(tzinfo=JST)
+        try:
+            html = cl.get("/JRADB/accessO.html", r["odds_cname"])
+            tf = jra.parse_odds_tf(html)
+            if not tf:
+                continue  # まだ発売前
+            now = now_jst(); stamp = now.isoformat(timespec="seconds"); mins = round((post - now).total_seconds() / 60, 1)
+            r["tf"]["前日"] = {"at": stamp, "mins": mins, "odds": {str(k): v for k, v in tf.items()}}
+            c7, c8 = _exotic_links(html, rid)
+            trio = jra.parse_odds_trio(cl.get("/JRADB/accessO.html", c7)) if c7 else {}
+            tri = jra.parse_odds_trifecta(cl.get("/JRADB/accessO.html", c8)) if c8 else {}
+            if trio or tri:
+                nos = sorted(no for x in (r["card"] or {}).get("runners", []) if (no := x.get("no")))
+                ex_live["races"].setdefault(rid, {})["前日"] = {
+                    "at": stamp, "mins": mins, "nos": nos, "trio": odds_codec.pack(nos, trio, False), "tri": odds_codec.pack(nos, tri, True)}
+                changed = True
+            print(f"{rid} 前日発売 単複○ 3連{'○' if trio or tri else '-'}")
+        except RuntimeError as e:
+            print("前日のオッズを取得できず", rid, e)
+    if changed:
+        O.write(f"live/{date}.json", ex_live, gz=True)
 
 
 def _race_rows(html: str):
