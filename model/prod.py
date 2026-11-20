@@ -201,6 +201,11 @@ except Exception:  # noqa: BLE001
 if SCALE != 1.0:
     _r = lambda v: max(100, int(round(v * SCALE / 100)) * 100)
     BANK, RACE_CAP, DAY_CAP, BIG_CAP, BIG_EV = BANK * SCALE, _r(RACE_CAP), _r(DAY_CAP), _r(BIG_CAP), BIG_EV * SCALE
+# 上限を直接決めたとき（config/bet.json の race_cap・day_cap・big_cap）はそちらを使う
+try:
+    RACE_CAP = int(_cfg.get("race_cap", RACE_CAP)); DAY_CAP = int(_cfg.get("day_cap", DAY_CAP)); BIG_CAP = int(_cfg.get("big_cap", BIG_CAP))
+except Exception:  # noqa: BLE001
+    pass
 
 
 def stakes(entries: list[dict], room: int) -> list[int]:

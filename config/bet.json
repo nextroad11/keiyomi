@@ -1,1 +1,1 @@
-{"scale": 0.1, "types": ["trio"]}
+{"scale": 0.3, "types": ["trio"], "race_cap": 5000, "day_cap": 20000, "big_cap": 50000}
