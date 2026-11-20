@@ -27,6 +27,7 @@ import exotic as X  # noqa: E402
 import features as F  # noqa: E402
 import odds_codec  # noqa: E402
 import prod  # noqa: E402
+import notify  # noqa: E402
 from store import Store  # noqa: E402
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -166,6 +167,25 @@ def score(paper, race_res):
     return t
 
 
+def _send(kind, p, q):
+    """買い目の通知。本文は 3連複・3連単の組と金額、合計、当たった場合の払戻の目安"""
+    lines, tot = [], 0
+    for key, name in (("trio", "3連複"), ("tri", "3連単")):
+        xs = [x for x in q.get(key, []) if x.get("y")]
+        if not xs:
+            continue
+        lines.append(f"【{name}】{len(xs)}点")
+        for x in xs:
+            lines.append(f"{x['c']}  {x['y']:,}円（{x['o']:.1f}倍）"); tot += x["y"]
+    head = "予告（まだ変わります）" if kind == "pre" else "確定・購入してください"
+    title = f"{p.get('venue','')}{p.get('rno','')}R {p.get('post','')} {head}"
+    body = f"合計 {tot:,}円\n" + "\n".join(lines)
+    try:
+        notify.send(title, body, 5 if kind == "fix" else 3)
+    except Exception as e:  # noqa: BLE001
+        print("通知できず", e)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -187,7 +207,8 @@ def main():
     res = D.read(f"results/{date}.json", {"races": {}})["races"]
     exf = O.read(f"exotic/{date}.json", {"races": {}})["races"]
     old = D.read(f"pred/{date}.json", {"date": date, "races": {}})
-    new = {"date": date, "model": model["version"], "races": {}}
+    new = {"date": date, "model": model["version"], "scale": prod.SCALE, "races": {}}
+    alerts = []
     day_used, day_ev, cap = 0, 0.0, prod.DAY_CAP
     for rid, r in sorted(live["races"].items(), key=lambda kv: kv[1].get("post") or ""):
         prev = old["races"].get(rid, {})
@@ -208,6 +229,16 @@ def main():
         elif rid in res and p.get("ex_mins") is not None and p["ex_mins"] <= 30.5:
             # 5分前が取れずに発走した：取れた中で一番遅い締切前のオッズで固定（何分前かを残す）
             p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {}), "late": True}
+        # スマホへの通知：10分前ごろに予告（仮の買い目）、5分前に確定。買い目のあるレースだけ、それぞれ1回
+        p["notified"] = list(prev.get("notified", []))
+        picks = lambda q: [x for x in q.get("trio", []) + q.get("tri", []) if x.get("y")]
+        if rid not in res:
+            if "paper" in p and "paper" not in prev and not p["paper"].get("late") and "fix" not in p["notified"]:
+                p["notified"].append("fix")
+                if picks(p["paper"]):
+                    alerts.append(("fix", p, p["paper"]))
+            elif "paper" not in p and p.get("ex_mins") is not None and p["ex_mins"] <= 10.5 and "pre" not in p["notified"] and picks(p):
+                p["notified"].append("pre"); alerts.append(("pre", p, p))
         if "paper" in p:
             for x in p["paper"].get("trio", []) + p["paper"].get("tri", []):
                 day_used += x.get("y", 0); day_ev += x.get("y", 0) * (x["p"] * x["o"] - 1)
@@ -231,6 +262,8 @@ def main():
                 if k in prev:
                     p[k] = prev[k]
         new["races"][rid] = p
+    for kind, p, q in alerts:
+        _send(kind, p, q)
     if json.dumps(new, sort_keys=True) != json.dumps(old, sort_keys=True):
         D.write(f"pred/{date}.json", new)
         idx = D.read("pred/index.json", {"dates": []})

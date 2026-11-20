@@ -5,7 +5,7 @@ name: 開催日の取得
 on:
   push:
     branches: [main]
-    paths: [".github/workflows/daily.yml", "scraper/daily.py", "model/predict.py", "model/prod.py"]
+    paths: [".github/workflows/daily.yml", "scraper/daily.py", "model/predict.py", "model/prod.py", "config/bet.json"]
   schedule:
     - cron: "*/30 23 * * *"
     - cron: "*/30 0-8 * * *"
@@ -37,6 +37,7 @@ jobs:
       - name: 1分ごとに取得
         env:
           APP_PASS: ${{ secrets.APP_PASS }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           save() {
             for d in data odds; do

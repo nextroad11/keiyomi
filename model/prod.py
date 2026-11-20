@@ -191,6 +191,15 @@ def pair_picks(sa, sm, nos, waku, win_odds: dict, place_odds: dict, pairs: dict)
 # 1点の金額＝ケリー基準×0.25（基準の元手100万円）、100円単位・最低100円。1レース30,000円まで。
 # 1日50,000円まで。その日すでに決めた買い目の見込み利益が6,000円を超えたら「勝負日」として1日100,000円まで。
 KELLY, BANK, RACE_CAP, DAY_CAP, BIG_CAP, BIG_EV = 0.25, 1_000_000, 30000, 50000, 100000, 6000
+# 金額の倍率（config/bet.json の scale。1/10 なら 0.1）。上限も一緒に縮める。1点の最低は100円のまま
+try:
+    import json as _json
+    SCALE = float(_json.loads((Path(__file__).resolve().parent.parent / "config" / "bet.json").read_text())["scale"])
+except Exception:  # noqa: BLE001
+    SCALE = 1.0
+if SCALE != 1.0:
+    _r = lambda v: max(100, int(round(v * SCALE / 100)) * 100)
+    BANK, RACE_CAP, DAY_CAP, BIG_CAP, BIG_EV = BANK * SCALE, _r(RACE_CAP), _r(DAY_CAP), _r(BIG_CAP), BIG_EV * SCALE
 
 
 def stakes(entries: list[dict], room: int) -> list[int]:

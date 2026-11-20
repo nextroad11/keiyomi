@@ -236,7 +236,7 @@ function renderToday(){
   if(!PRED){ el.innerHTML = `<div class="card"><h2>レース一覧</h2>${dates.length?sel:""}<p class="muted" style="margin:8px 0 0">${dates.length?"この日の予想はまだありません。":"まだ予想がありません。次の開催日の朝から出ます。"}</p></div>`; bindDate(); return; }
   const races = Object.values(PRED.races).sort((a,b)=>(a.post||"").localeCompare(b.post||""));
   const nTrio = races.filter(r=>(r.trio||[]).length).length;
-  let html = `<div class="banner"><b>本番</b>：実際に買う前提で、締切5分前のオッズで買い目を決めています。今はお金を賭けず、その買い目の成績をそのまま記録しています。</div>
+  let html = `<div class="banner"><b>本番</b>：発走5分前のオッズで買い目と金額を決めます（決まるとスマホに通知）。この「AIの買い目（確定）」の通りに買ってください。${PRED.scale&&PRED.scale!==1?`<br>金額は倍率 <b>${PRED.scale}</b> 倍で計算しています。`:""}</div>
   <div class="card"><div class="row" style="justify-content:space-between"><div style="flex:1;min-width:140px">${sel}</div>
     <div class="small muted">${races.length}レース・買うレース ${nTrio}R${races.some(r=>r.result)?`・結果 ${races.filter(r=>r.result).length}R・記録 ${races.filter(r=>r.paper).length}R`:""}</div></div></div>`;
   const byV = {}; races.forEach(r => (byV[r.venue] = byV[r.venue] || []).push(r));
