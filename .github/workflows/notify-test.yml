@@ -1,0 +1,12 @@
+name: 通知のテスト
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install requests
+      - env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python scraper/notify.py "競読みAI テスト通知" "通知の設定ができました。明日から、買い目が決まると発走10分前に予告、5分前に確定をお知らせします。" 4
