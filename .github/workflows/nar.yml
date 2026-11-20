@@ -42,6 +42,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
+          # 履歴は持たない（毎日、今の中身だけの1コミットに置き換える）。月ごとのファイルが大きく、履歴を残すと容量が毎日増えるため
+          git checkout -q --orphan snap
           git commit -q -m "地方競馬の取り込み $(TZ=Asia/Tokyo date '+%m/%d')"
-          for i in 1 2 3 4; do git push -q -u origin nar && exit 0; git pull -q --rebase origin nar; done
-          exit 1
+          git push -q -f origin snap:nar

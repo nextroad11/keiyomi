@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import datetime as dt
 import io
 import json
@@ -78,7 +79,11 @@ def main():
                 if key == "odds" and (y, m) not in recent:
                     st["odds_empty"].append(ym)
             else:
+                h = hashlib.sha256(json.dumps(files, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+                if st.setdefault("hash", {}).get(f"{folder}/{ym}") == h:
+                    print(f"{kind} {ym}: 変わりなし"); time.sleep(WAIT); continue
                 S.write(f"{folder}/{ym}.json", files, gz=True)
+                st["hash"][f"{folder}/{ym}"] = h
                 if ym not in st[key]:
                     st[key].append(ym)
                 print(f"{kind} {ym}: {rows}行", flush=True)
