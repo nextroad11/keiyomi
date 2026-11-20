@@ -194,9 +194,10 @@ KELLY, BANK, RACE_CAP, DAY_CAP, BIG_CAP, BIG_EV = 0.25, 1_000_000, 30000, 50000,
 # 金額の倍率（config/bet.json の scale。1/10 なら 0.1）。上限も一緒に縮める。1点の最低は100円のまま
 try:
     import json as _json
-    SCALE = float(_json.loads((Path(__file__).resolve().parent.parent / "config" / "bet.json").read_text())["scale"])
+    _cfg = _json.loads((Path(__file__).resolve().parent.parent / "config" / "bet.json").read_text())
+    SCALE = float(_cfg["scale"]); BET_TYPES = list(_cfg.get("types", ["trio", "tri"]))
 except Exception:  # noqa: BLE001
-    SCALE = 1.0
+    SCALE, BET_TYPES = 1.0, ["trio", "tri"]
 if SCALE != 1.0:
     _r = lambda v: max(100, int(round(v * SCALE / 100)) * 100)
     BANK, RACE_CAP, DAY_CAP, BIG_CAP, BIG_EV = BANK * SCALE, _r(RACE_CAP), _r(DAY_CAP), _r(BIG_CAP), BIG_EV * SCALE

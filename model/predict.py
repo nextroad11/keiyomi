@@ -217,7 +217,8 @@ def main():
         if cap == prod.DAY_CAP and day_ev >= prod.BIG_EV:
             cap = prod.BIG_CAP
         room = cap - day_used
-        ent = [dict(e, t="trio") for e in p.get("trio", [])] + [dict(e, t="tri") for e in p.get("tri", [])]
+        # 実際にお金を賭ける券種だけに金額を付ける（config/bet.json の types）。ほかは記録だけ（100円均等の参考成績）
+        ent = [dict(e, t=k) for k in ("trio", "tri") if k in prod.BET_TYPES for e in p.get(k, [])]
         if ent:
             for e, v in zip(ent, prod.stakes(ent, room)):
                 (p["trio"] if e["t"] == "trio" else p["tri"])[[x["c"] for x in (p["trio"] if e["t"] == "trio" else p["tri"])].index(e["c"])]["y"] = v
