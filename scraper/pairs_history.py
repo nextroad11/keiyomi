@@ -8,6 +8,7 @@ data ブランチの過去結果の各レースについて、単複オッズの
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import sys
 import time
@@ -31,7 +32,9 @@ def main():
     st = json.loads(st_file.read_text()) if st_file.exists() else {"done": [], "failed": []}
     done = set(st["done"])
     cl = jra.Client()
-    dates = sorted((p.stem for p in (Path(a.data) / "enc" / "results").glob("*.json")), reverse=True)
+    # 当日（日本時間）の分は daily.py が取るので触らない（同じファイルを両方が書くと保存がぶつかる）
+    today = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=9)).strftime("%Y%m%d")
+    dates = sorted((p.stem for p in (Path(a.data) / "enc" / "results").glob("*.json") if p.stem < today), reverse=True)
     n_new = 0
 
     def save(date, day):

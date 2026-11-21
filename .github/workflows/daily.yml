@@ -10,6 +10,10 @@ on:
     - cron: "*/30 23 * * *"
     - cron: "*/30 0-8 * * *"
   workflow_dispatch:
+    inputs:
+      force:
+        description: "1 にすると時間外でも取得する（取りこぼしの回収用）"
+        default: "0"
 permissions:
   contents: write
 concurrency:
@@ -45,14 +49,19 @@ jobs:
               git -C $d diff --cached --quiet && continue
               git -C $d commit -q -m "開催日の取得 $(TZ=Asia/Tokyo date '+%m/%d %H:%M')"
               b=$(git -C $d branch --show-current)
-              for i in 1 2 3 4; do git -C $d push -q -u origin "$b" && break; git -C $d pull -q --rebase origin "$b"; done
+              for i in 1 2 3 4; do
+                git -C $d push -q -u origin "$b" && break
+                git -C $d rebase --abort 2>/dev/null
+                # ぶつかったら当日の取得（こちら）を優先して重ねる
+                git -C $d pull -q --rebase -X theirs origin "$b" || { git -C $d rebase --abort 2>/dev/null; git -C $d pull -q --no-rebase -X ours origin "$b"; }
+              done
             done
           }
           set +e   # 1回の失敗でループ全体を止めない
           end=$((SECONDS + 345*60)); n=0
           while [ $SECONDS -lt $end ]; do
             h=$(TZ=Asia/Tokyo date +%H)
-            if [ "$h" -lt 8 ] || [ "$h" -ge 18 ]; then echo "時間外"; break; fi
+            if [ "${{ github.event.inputs.force }}" != "1" ] && { [ "$h" -lt 8 ] || [ "$h" -ge 18 ]; }; then echo "時間外"; break; fi
             git pull -q --ff-only origin main || true
             python scraper/daily.py --data data --odds odds --done-flag /tmp/daily_done || echo "この回は失敗（次の分に続ける）"
             python model/predict.py --data data --odds odds || echo "予想の計算に失敗（次の分に続ける）"
