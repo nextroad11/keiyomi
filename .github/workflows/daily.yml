@@ -7,8 +7,10 @@ on:
     branches: [main]
     paths: [".github/workflows/daily.yml", "scraper/daily.py", "model/predict.py", "model/prod.py", "config/bet.json"]
   schedule:
-    - cron: "*/30 23 * * *"
-    - cron: "*/30 0-8 * * *"
+    # 毎時0分・30分ちょうどは GitHub が混んで大きく遅れるので、ずらした時刻にする。7時台に始まった回は8時まで待つ
+    - cron: "37,52 22 * * *"
+    - cron: "7,37 23 * * *"
+    - cron: "7,37 0-8 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -61,6 +63,7 @@ jobs:
           end=$((SECONDS + 345*60)); n=0
           while [ $SECONDS -lt $end ]; do
             h=$(TZ=Asia/Tokyo date +%H)
+            if [ "${{ github.event.inputs.force }}" != "1" ] && [ "$h" -lt 8 ]; then echo "8時まで待つ"; sleep 60; continue; fi
             if [ "${{ github.event.inputs.force }}" != "1" ] && { [ "$h" -lt 8 ] || [ "$h" -ge 18 ]; }; then echo "時間外"; break; fi
             git pull -q --ff-only origin main || true
             python scraper/daily.py --data data --odds odds --done-flag /tmp/daily_done || echo "この回は失敗（次の分に続ける）"
