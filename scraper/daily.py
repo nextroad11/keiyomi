@@ -195,6 +195,8 @@ def main():
         Path(a.done_flag).write_text("all done")
         print(f"{date}: 全{len(races)}レースの結果まで取り終えました")
     print(f"アクセス {cl.count}回 {time.time()-t0:.0f}秒")
+    if cl.count >= 3 and cl.ok == 0:
+        sys.exit(3)   # この回は1つも取れなかった（JRAに届かない）。ワークフローが続けば別の実行機に切り替える
 
 
 PREVIEW_EVERY = 30  # 前日発売のオッズを取り直す間隔（分）

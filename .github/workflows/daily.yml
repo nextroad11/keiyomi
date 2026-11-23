@@ -18,6 +18,7 @@ on:
         default: "0"
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: daily
   cancel-in-progress: false
@@ -44,6 +45,7 @@ jobs:
         env:
           APP_PASS: ${{ secrets.APP_PASS }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           save() {
             for d in data odds; do
@@ -60,13 +62,20 @@ jobs:
             done
           }
           set +e   # 1回の失敗でループ全体を止めない
-          end=$((SECONDS + 345*60)); n=0
+          end=$((SECONDS + 345*60)); n=0; fails=0
           while [ $SECONDS -lt $end ]; do
             h=$(TZ=Asia/Tokyo date +%H)
             if [ "${{ github.event.inputs.force }}" != "1" ] && [ "$h" -lt 8 ]; then echo "8時まで待つ"; sleep 60; continue; fi
             if [ "${{ github.event.inputs.force }}" != "1" ] && { [ "$h" -lt 8 ] || [ "$h" -ge 18 ]; }; then echo "時間外"; break; fi
             git pull -q --ff-only origin main || true
-            python scraper/daily.py --data data --odds odds --done-flag /tmp/daily_done || echo "この回は失敗（次の分に続ける）"
+            python scraper/daily.py --data data --odds odds --done-flag /tmp/daily_done; rc=$?
+            if [ $rc -eq 3 ]; then fails=$((fails+1)); echo "JRAに届かない（${fails}回続けて）"; elif [ $rc -ne 0 ]; then echo "この回は失敗（次の分に続ける）"; else fails=0; fi
+            if [ "${fails:-0}" -ge 4 ]; then
+              # この実行機からJRAに届かない状態が続いた。保存して、別の実行機で取り直す
+              save; echo "別の実行機に切り替える"
+              gh workflow run daily.yml --ref main -f force=${{ github.event.inputs.force || '0' }} -R ${{ github.repository }} || true
+              break
+            fi
             python model/predict.py --data data --odds odds || echo "予想の計算に失敗（次の分に続ける）"
             n=$((n+1)); [ $((n % 5)) -eq 0 ] && save
             [ -f /tmp/daily_done ] && break

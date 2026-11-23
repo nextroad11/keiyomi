@@ -26,7 +26,7 @@ class Client:
     def __init__(self, wait: float = WAIT):
         self.s = requests.Session()
         self.s.headers.update({"User-Agent": UA, "Accept-Language": "ja"})
-        self.wait, self.last, self.count = wait, 0.0, 0
+        self.wait, self.last, self.count, self.ok = wait, 0.0, 0, 0
 
     def get(self, path: str, cname: str) -> str:
         """path は /JRADB/accessS.html など。失敗したら2回までやり直す。"""
@@ -38,7 +38,9 @@ class Client:
             try:
                 r = self.s.post(BASE + path, data={"cname": cname}, timeout=30)
                 if r.status_code == 200 and len(r.content) > 2000:
+                    self.ok += 1
                     return r.content.decode("cp932", errors="replace")
+                print(f"  JRAの応答 {r.status_code} {len(r.content)}バイト")
             except requests.RequestException:
                 pass
             time.sleep(5 * (i + 1))
