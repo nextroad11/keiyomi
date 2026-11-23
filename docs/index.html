@@ -324,9 +324,9 @@ function renderRace(){
   html += `<div class="card"><h2>3連複の買い目 <span class="sub">本線</span></h2>
     ${(p.trio||[]).length?comboTable(p.trio,"trio",hk)+`<p class="small" style="margin:6px 0 0">合計 <b class="num">${yen(p.trio.reduce((a,x)=>a+(x.y??100),0))}</b>${p.cap>50000?' <span class="chip shu">勝負日</span>':""}</p>`:`<p class="muted" style="margin:0">このレースは見送り（割に合う組がありません）。</p>`}
     ${p.ex_mins!=null?`<p class="note" style="margin-top:6px">${minsLabel(p.ex_mins)}の3連複・3連単オッズで計算。</p>`:`<p class="note" style="margin-top:6px">3連複・3連単のオッズは、発走30分前から取れます。</p>`}</div>`;
-  html += `<div class="card"><h2>3連単の買い目 <span class="sub">試験運用・48点まで</span></h2>
+  html += `<div class="card"><h2>3連単の買い目 <span class="sub">本番・1点100円・10点まで</span></h2>
     ${(p.tri||[]).length?comboTable(p.tri,"tri",hkt):`<p class="muted" style="margin:0">候補なし。</p>`}
-    <p class="note" style="margin-top:6px">3連複の候補の3頭の並びのうち、3連単でも期待値1.0以上の組。過去の検証で数回の高配当頼みだったため、まだ採用していません。</p></div>`;
+    <p class="note" style="margin-top:6px">3連複で選んだ3頭の並びのうち、期待値1.0以上・確率0.5%以上の組を、当たる確率の高い順に10点まで。1点100円、1レース1,000円・1日5,000円まで（3連複とは別の枠）。</p></div>`;
   const oth = p.others || {};
   const OT = ["単勝","複勝","枠連","馬連","ワイド","馬単"];
   if(OT.some(t=>oth[t])){
@@ -360,13 +360,13 @@ function renderRecord(){
       <div class="tile"><div class="k">回収率（3連複＋3連単）</div><div class="v ${MA.roi>=1?"pos":MA.roi!=null?"neg":""}">${MA.roi!=null?pct(MA.roi,1):"—"}</div></div>
       <div class="tile"><div class="k">収支</div><div class="v ${MA.r-MA.c>=0?"pos":"neg"}" style="font-size:22px">${MA.c?yen(MA.r-MA.c):"—"}</div><div class="small muted">投資 ${yen(MA.c)} ／ 払戻 ${yen(MA.r)}</div></div>
       <div class="tile"><div class="k">3連複</div><div class="v" style="font-size:22px">${MT.roi!=null?pct(MT.roi,1):"—"}</div><div class="small muted">投資 ${yen(MT.c)}</div></div>
-      <div class="tile"><div class="k">3連単（試験）</div><div class="v" style="font-size:22px">${MX.roi!=null?pct(MX.roi,1):"—"}</div><div class="small muted">投資 ${yen(MX.c)}</div></div>
+      <div class="tile"><div class="k">3連単</div><div class="v" style="font-size:22px">${MX.roi!=null?pct(MX.roi,1):"—"}</div><div class="small muted">投資 ${yen(MX.c)}</div></div>
     </div></div>
   <div class="small muted" style="margin-top:4px">参考：各100円均等で買った場合</div>
   <div class="tiles">
     <div class="tile"><div class="k">3連複 回収率</div><div class="v ${T.roi>=1?"pos":T.roi!=null?"neg":""}">${T.roi!=null?pct(T.roi,1):"—"}</div><div class="small muted">${T.races}R・${T.pts}点・的中${T.hit}</div></div>
     <div class="tile"><div class="k">3連複 収支</div><div class="v ${T.ret-T.pts*100>=0?"pos":"neg"}" style="font-size:22px">${T.pts?yen(T.ret-T.pts*100):"—"}</div><div class="small muted">購入 ${yen(T.pts*100)}</div></div>
-    <div class="tile"><div class="k">3連単（試験運用） 回収率</div><div class="v ${X.roi>=1?"pos":X.roi!=null?"neg":""}">${X.roi!=null?pct(X.roi,1):"—"}</div><div class="small muted">${X.races}R・${X.pts}点・的中${X.hit}</div></div>
+    <div class="tile"><div class="k">3連単 回収率（100円均等）</div><div class="v ${X.roi>=1?"pos":X.roi!=null?"neg":""}">${X.roi!=null?pct(X.roi,1):"—"}</div><div class="small muted">${X.races}R・${X.pts}点・的中${X.hit}</div></div>
     <div class="tile"><div class="k">3連単 収支</div><div class="v ${X.ret-X.pts*100>=0?"pos":"neg"}" style="font-size:22px">${X.pts?yen(X.ret-X.pts*100):"—"}</div><div class="small muted">購入 ${yen(X.pts*100)}</div></div>
   </div>`;
   const OT=["単勝","複勝","枠連","馬連","ワイド","馬単"], os={};

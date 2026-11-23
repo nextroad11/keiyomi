@@ -22,7 +22,8 @@ import features as F  # noqa: E402
 Z = ["z_" + c for c in F.FEATURES]
 RULES = {
     "trio": {"th": 1.0, "pmin": 0.01, "omin": 10},
-    "tri": {"th": 1.0, "cap": 48, "from_trio": True},
+    # 第8回：3連複で選んだ3頭の並びから、当たる確率の高い順に10点まで（確率≧0.5%・期待値≧1）
+    "tri": {"th": 1.0, "cap": 10, "pmin": 0.005, "from_trio": True},
 }
 MARKS = ["◎", "○", "▲", "△", "△"]
 
@@ -120,8 +121,8 @@ def picks(n, probs, odds_tri, odds_trio):
     if pt is not None and res["trio"]:
         r = RULES["tri"]; ev = pt * odds_tri
         want = np.isin(M, res["trio"])
-        idx = np.where(okt & want & (ev >= r["th"]))[0]
-        res["tri"] = [int(i) for i in idx[np.argsort(-ev[idx])][: r["cap"]]]
+        idx = np.where(okt & want & (ev >= r["th"]) & (pt >= r.get("pmin", 0)))[0]
+        res["tri"] = [int(i) for i in idx[np.argsort(-pt[idx])][: r["cap"]]]
     return res
 
 
@@ -201,6 +202,12 @@ except Exception:  # noqa: BLE001
 if SCALE != 1.0:
     _r = lambda v: max(100, int(round(v * SCALE / 100)) * 100)
     BANK, RACE_CAP, DAY_CAP, BIG_CAP, BIG_EV = BANK * SCALE, _r(RACE_CAP), _r(DAY_CAP), _r(BIG_CAP), BIG_EV * SCALE
+# 3連単は3連複と別の枠。1点100円の均等買い（検証と同じ）。1レース・1日の上限だけ決める
+TRI_RACE_CAP, TRI_DAY_CAP = 1000, 5000
+try:
+    TRI_RACE_CAP = int(_cfg.get("tri_race_cap", TRI_RACE_CAP)); TRI_DAY_CAP = int(_cfg.get("tri_day_cap", TRI_DAY_CAP))
+except Exception:  # noqa: BLE001
+    pass
 # 上限を直接決めたとき（config/bet.json の race_cap・day_cap・big_cap）はそちらを使う
 try:
     RACE_CAP = int(_cfg.get("race_cap", RACE_CAP)); DAY_CAP = int(_cfg.get("day_cap", DAY_CAP)); BIG_CAP = int(_cfg.get("big_cap", BIG_CAP))

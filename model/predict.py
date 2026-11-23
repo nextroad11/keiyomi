@@ -209,7 +209,7 @@ def main():
     old = D.read(f"pred/{date}.json", {"date": date, "races": {}})
     new = {"date": date, "model": model["version"], "scale": prod.SCALE, "races": {}}
     alerts = []
-    day_used, day_ev, cap = 0, 0.0, prod.DAY_CAP
+    day_used, day_ev, cap, tri_used = 0, 0.0, prod.DAY_CAP, 0
     for rid, r in sorted(live["races"].items(), key=lambda kv: kv[1].get("post") or ""):
         prev = old["races"].get(rid, {})
         p = predict_race(rid, r, rows, exl.get(rid), model) or {"rid": rid, "post": r.get("post"), "venue": r.get("venue"), "rno": r.get("rno")}
@@ -218,10 +218,17 @@ def main():
             cap = prod.BIG_CAP
         room = cap - day_used
         # 実際にお金を賭ける券種だけに金額を付ける（config/bet.json の types）。ほかは記録だけ（100円均等の参考成績）
-        ent = [dict(e, t=k) for k in ("trio", "tri") if k in prod.BET_TYPES for e in p.get(k, [])]
-        if ent:
-            for e, v in zip(ent, prod.stakes(ent, room)):
-                (p["trio"] if e["t"] == "trio" else p["tri"])[[x["c"] for x in (p["trio"] if e["t"] == "trio" else p["tri"])].index(e["c"])]["y"] = v
+        if "trio" in prod.BET_TYPES and p.get("trio"):
+            for x, v in zip(p["trio"], prod.stakes(p["trio"], room)):
+                x["y"] = v
+        # 3連単は別枠：1点100円、1レース・1日の上限まで（確率の高い順に並んでいる）
+        if "tri" in prod.BET_TYPES and p.get("tri"):
+            n = max(0, min(len(p["tri"]), prod.TRI_RACE_CAP // 100, (prod.TRI_DAY_CAP - tri_used) // 100))
+            for i, x in enumerate(p["tri"]):
+                if i < n:
+                    x["y"] = 100
+                else:
+                    x.pop("y", None)
         p["cap"] = cap
         if "paper" in prev:
             p["paper"] = prev["paper"]
@@ -241,8 +248,9 @@ def main():
             elif "paper" not in p and p.get("ex_mins") is not None and p["ex_mins"] <= 10.5 and "pre" not in p["notified"] and picks(p):
                 p["notified"].append("pre"); alerts.append(("pre", p, p))
         if "paper" in p:
-            for x in p["paper"].get("trio", []) + p["paper"].get("tri", []):
+            for x in p["paper"].get("trio", []):
                 day_used += x.get("y", 0); day_ev += x.get("y", 0) * (x["p"] * x["o"] - 1)
+            tri_used += sum(x.get("y", 0) for x in p["paper"].get("tri", []))
         if rid in res:
             p["result"] = score(p.get("paper") or {"trio": [], "tri": []}, res[rid])
             if "paper" not in p:
