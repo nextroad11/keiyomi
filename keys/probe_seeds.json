@@ -1,36 +1,11 @@
 {
- "max_pages": 6,
- "max_depth": 0,
+ "max_pages": 16,
+ "max_depth": 1,
+ "follow": "pw01dud",
  "seeds": [
-  [
-   "GET",
-   "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2026&k_month=6",
-   null
-  ],
-  [
-   "GET",
-   "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2026&k_month=1",
-   null
-  ],
-  [
-   "GET",
-   "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2025&k_month=11",
-   null
-  ],
-  [
-   "GET",
-   "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2025&k_month=6",
-   null
-  ],
-  [
-   "GET",
-   "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2024&k_month=11",
-   null
-  ],
-  [
-   "GET",
-   "https://www.keiba.go.jp/KeibaWeb/DataDownload/OddsDataDownload?type=monthly&k_year=2023&k_month=11",
-   null
-  ]
+  ["GET", "/keiba/baba/", null],
+  ["GET", "/keiba/baba/archive/", null],
+  ["GET", "/keiba/baba/archive/2025.html", null],
+  ["POST", "/JRADB/accessD.html", "pw01dde0108202605041220261115/01"]
  ]
 }
