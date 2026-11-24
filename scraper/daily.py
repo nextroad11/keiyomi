@@ -162,6 +162,9 @@ def main():
             if not sde:
                 continue  # まだ確定していない
             race = jra.parse_result(cl.get("/JRADB/accessS.html", sde[0]))
+            if incomplete(race, r):
+                print(f"{rid} 結果が速報（{len(race.get('runners', []))}頭だけ）。あとで取り直す")
+                continue
             race.update({k: r[k] for k in ("id", "jcd", "venue", "kai", "day")})
             race.setdefault("date", date); race["rno"] = race.get("rno") or r["rno"]
             tf_html = cl.get("/JRADB/accessO.html", race.get("odds_cname") or r["odds_cname"])
@@ -255,6 +258,13 @@ def _race_rows(html: str):
 
 
 PAIR_PAGES = {"waku": "pw153ou", "umaren": "pw154ou", "wide": "pw155ou", "umatan": "pw156ou"}
+
+
+def incomplete(race: dict, r: dict) -> bool:
+    """レース直後の結果ページは「速報」で上位5頭だけのことがある。出馬表の頭数より大きく少なければ、まだ保存しない"""
+    want = len([x for x in ((r.get("card") or {}).get("runners") or []) if x.get("no") is not None])
+    got = len(race.get("runners") or [])
+    return want > 5 and got < want - 2
 
 
 def _fetch_pairs(cl, tf_html: str, rid: str, nos: list[int]) -> dict:

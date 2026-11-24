@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime as dt
 import json
 import pickle
@@ -51,6 +52,26 @@ def feature_rows(D, live, model, cache_dir: Path) -> pd.DataFrame:
     f.write_bytes(pickle.dumps(out))
     print(f"特徴量を作りました（今日 {out.rid.nunique()}レース・{len(out)}頭）", flush=True)
     return out
+
+
+def nobet_reason(pf, okf, of):
+    """3連複の見送り理由（prod.RULES の条件を上から順に見る）"""
+    r = prod.RULES["trio"]
+    if pf is None or okf.sum() == 0:
+        return "3連複オッズなし"
+    ev = pf * of; a = okf & (ev >= r["th"])
+    if not a.any():
+        return "期待値1以上の組なし"
+    b = a & (pf >= r["pmin"])
+    if not b.any():
+        return "期待値1以上は確率1%未満のみ"
+    if not (b & (of >= r["omin"])).any():
+        return "期待値1以上・確率1%以上はオッズ10倍未満のみ"
+    return "買い"
+
+
+def _b16(a) -> str:
+    return base64.b64encode(np.asarray(a, dtype=np.float16).tobytes()).decode()
 
 
 def latest(snaps: dict):
@@ -130,6 +151,15 @@ def predict_race(rid, r, rows, ex_snaps, model):
             out["others"] = prod.pair_picks(sa, sm, nos, wk, {k: v.get("win") for k, v in odds_now.items()},
                                             {k: v.get("pmin") for k, v in odds_now.items()}, pr)
         out["man"] = round(float(p_t[o_t >= 100].sum()), 4) if p_t is not None else None
+        # 全レースの仮想予想（買い・見送りに関係なく記録。実際には買わない）
+        okf = probs["f"][1]
+        q_f, _ = X.market_prob(o_f)
+        if p_f is not None:
+            evf = np.where(okf, p_f * o_f, 0)
+            top = np.argsort(-np.where(okf, p_f, -1))[:5]
+            out["_virt"] = {"reason": nobet_reason(p_f, okf, o_f), "maxev": round(float(evf.max()), 3), "nos": nos,
+                            "top": [{"c": combo_str(C[i], nos, False), "p": round(float(p_f[i]), 4), "q": round(float(q_f[i]), 4), "o": float(o_f[i])} for i in top],
+                            "pf": _b16(p_f), "qf": _b16(q_f)}
         out["trio"] = [{"c": combo_str(C[i], nos, False), "p": round(float(p_f[i]), 4), "o": float(o_f[i]), "ev": round(float(p_f[i] * o_f[i]), 3)} for i in pk["trio"]]
         out["tri"] = [{"c": combo_str(P[i], nos, True), "p": round(float(p_t[i]), 5), "o": float(o_t[i]), "ev": round(float(p_t[i] * o_t[i]), 3)} for i in pk["tri"]]
         # 参考：AIの確率が高い3連複の上位（買い目ではない）
@@ -167,6 +197,26 @@ def score(paper, race_res):
     return t
 
 
+def virt_score(v, race_res):
+    """仮想予想の採点：AIの1番手の3連複（100円）と、当たった組に付けていた確率（AI・人気）"""
+    order = sorted([x for x in race_res.get("runners", []) if x.get("pos")], key=lambda x: x["pos"])[:3]
+    top3 = tuple(sorted(x["no"] for x in order))
+    pay = (race_res.get("pay", {}).get("3連複") or [{}])[0].get("yen", 0)
+    out = {"top3": list(top3), "trio_pay": pay}
+    if not v.get("top") or len(top3) < 3:
+        return out
+    c1 = tuple(int(t) for t in v["top"][0]["c"].split("-"))
+    out["top1_hit"] = c1 == top3; out["top1_ret"] = pay if c1 == top3 else 0
+    nos = v.get("nos")
+    if nos and all(t in nos for t in top3):
+        _, C, _ = X.perms(len(nos))
+        j = np.where((C == sorted(nos.index(t) for t in top3)).all(1))[0]
+        if len(j):
+            pf = np.frombuffer(base64.b64decode(v["pf"]), dtype=np.float16); qf = np.frombuffer(base64.b64decode(v["qf"]), dtype=np.float16)
+            out["p_win"] = float(pf[j[0]]); out["q_win"] = float(qf[j[0]])
+    return out
+
+
 def _send(kind, p, q):
     """買い目の通知。本文は 3連複・3連単の組と金額、合計、当たった場合の払戻の目安"""
     lines, tot = [], 0
@@ -192,6 +242,7 @@ def main():
     ap.add_argument("--odds", default="odds")
     ap.add_argument("--date", default=None)
     ap.add_argument("--cache", default="/tmp")
+    ap.add_argument("--redo-ref", action="store_true", help="結果を取り直したあと：確定オッズでの参考の買い目を作り直す")
     a = ap.parse_args()
     D, O = Store(Path(a.data)), Store(Path(a.odds))
     D.data = Path(a.data)
@@ -207,6 +258,7 @@ def main():
     res = D.read(f"results/{date}.json", {"races": {}})["races"]
     exf = O.read(f"exotic/{date}.json", {"races": {}})["races"]
     old = D.read(f"pred/{date}.json", {"date": date, "races": {}})
+    V = D.read(f"virt/{date}.json", {"date": date, "races": {}}); v_old = json.dumps(V, sort_keys=True)
     new = {"date": date, "model": model["version"], "scale": prod.SCALE, "races": {}}
     alerts = []
     day_used, day_ev, cap, tri_used = 0, 0.0, prod.DAY_CAP, 0
@@ -230,6 +282,7 @@ def main():
                 else:
                     x.pop("y", None)
         p["cap"] = cap
+        virt = p.pop("_virt", None)
         if "paper" in prev:
             p["paper"] = prev["paper"]
         elif p.get("ex_mins") is not None and p["ex_mins"] <= FREEZE_AT:
@@ -237,6 +290,15 @@ def main():
         elif rid in res and p.get("ex_mins") is not None and p["ex_mins"] <= 30.5:
             # 5分前が取れずに発走した：取れた中で一番遅い締切前のオッズで固定（何分前かを残す）
             p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {}), "late": True}
+        # 仮想予想：記録用の買い目を固定したのと同じ時点で固定する
+        if "paper" in p and rid not in V["races"]:
+            V["races"][rid] = dict(virt or {"reason": "3連複オッズなし"}, mins=p["paper"]["mins"], late=p["paper"].get("late", False),
+                                   bet=bool(p["paper"].get("trio")), venue=p.get("venue"), rno=p.get("rno"),
+                                   approx="paper" in prev)  # 後から作った分は、固定時点ではなく最後のオッズでの計算
+        if rid in res and rid not in V["races"]:
+            V["races"][rid] = {"reason": "締切前のオッズが取れず", "bet": False, "venue": p.get("venue"), "rno": p.get("rno")}
+        if rid in res and "score" not in V["races"].get(rid, {}):
+            V["races"][rid]["score"] = virt_score(V["races"][rid], res[rid])
         # スマホへの通知：10分前ごろに予告（仮の買い目）、5分前に確定。買い目のあるレースだけ、それぞれ1回
         p["notified"] = list(prev.get("notified", []))
         picks = lambda q: [x for x in q.get("trio", []) + q.get("tri", []) if x.get("y")]
@@ -256,7 +318,7 @@ def main():
             if "paper" not in p:
                 p["result"]["no_paper"] = True  # 締切前の3連オッズが取れなかった
                 # 参考：確定オッズで計算した買い目（実際には選べなかったので記録には入れない）
-                if "ref" in prev:
+                if "ref" in prev and not a.redo_ref:
                     p["ref"] = prev["ref"]
                 elif rid in exf:
                     fin = res[rid].get("odds_final") or {}
@@ -273,6 +335,8 @@ def main():
         new["races"][rid] = p
     for kind, p, q in alerts:
         _send(kind, p, q)
+    if json.dumps(V, sort_keys=True) != v_old:
+        D.write(f"virt/{date}.json", V)
     if json.dumps(new, sort_keys=True) != json.dumps(old, sort_keys=True):
         D.write(f"pred/{date}.json", new)
         idx = D.read("pred/index.json", {"dates": []})

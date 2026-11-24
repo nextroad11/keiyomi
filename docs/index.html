@@ -355,7 +355,7 @@ function renderRecord(){
   const M = k => { let c=0, r=0; rs.forEach(x=>{ const m=x.money?.[k]; if(m){ c+=m.cost; r+=m.ret; } }); return {c,r,roi:c?r/c:null}; };
   const MT=M("trio"), MX=M("tri"), MA={c:MT.c+MX.c, r:MT.r+MX.r}; MA.roi = MA.c? MA.r/MA.c : null;
   let html = `<div class="banner"><b>本番の成績</b>：締切5分前に決めたAIの買い目を、AIが決めた金額で買ったとして実際の払戻で採点しています（お金は賭けていません）。回収率の判断には数百レースが必要です（いま ${rs.length}レース）。</div>
-  <div class="card"><h2>本番の賭け方での成績 <span class="sub">1レース3万円・1日5万円（勝負日10万円）まで</span></h2>
+  <div class="card"><h2>本番の賭け方での成績 <span class="sub">3連複 1レース5,000円・1日20,000円（勝負日50,000円）／3連単 1レース1,000円・1日5,000円</span></h2>
     <div class="tiles">
       <div class="tile"><div class="k">回収率（3連複＋3連単）</div><div class="v ${MA.roi>=1?"pos":MA.roi!=null?"neg":""}">${MA.roi!=null?pct(MA.roi,1):"—"}</div></div>
       <div class="tile"><div class="k">収支</div><div class="v ${MA.r-MA.c>=0?"pos":"neg"}" style="font-size:22px">${MA.c?yen(MA.r-MA.c):"—"}</div><div class="small muted">投資 ${yen(MA.c)} ／ 払戻 ${yen(MA.r)}</div></div>
@@ -374,6 +374,7 @@ function renderRecord(){
   if(Object.keys(os).length) html += `<div class="card"><h2>ほかの券種（試験運用）</h2><div class="tw"><table><thead><tr><th>券種</th><th class="r">レース</th><th class="r">点数</th><th class="r">的中</th><th class="r">回収率</th></tr></thead><tbody>
     ${OT.filter(t=>os[t]).map(t=>{const o=os[t]; return `<tr><td>${t}</td><td class="r num">${o.races}</td><td class="r num">${o.pts}</td><td class="r num">${o.hit}</td><td class="r num ${o.ret>=o.pts*100?"pos":"neg"}">${pct(o.ret/(o.pts*100),1)}</td></tr>`;}).join("")}
     </tbody></table></div></div>`;
+  html += `<div class="card" id="virt-card"><h2>全レースの仮想予想 <span class="sub">買い・見送りに関係なく記録（11/28〜）</span></h2><p class="muted" style="margin:0">読み込み中…</p></div>`;
   html += `<div class="card"><h2>回収率の推移 <span class="sub">記録を積み上げた累計</span></h2>${chart(rs)}</div>`;
   const byDate = {}; rs.forEach(r=>{ const d=byDate[r.date]=byDate[r.date]||{n:0,tp:0,tr:0,xp:0,xr:0}; d.n++; d.tp+=r.trio?.pts||0; d.tr+=r.trio?.ret||0; d.xp+=r.tri?.pts||0; d.xr+=r.tri?.ret||0; });
   html += `<div class="card"><h2>開催日ごと</h2>${Object.keys(byDate).length?`<div class="tw"><table><thead><tr><th>日付</th><th class="r">記録</th><th class="r">3連複</th><th class="r">回収率</th><th class="r">3連単</th><th class="r">回収率</th></tr></thead><tbody>
@@ -382,6 +383,25 @@ function renderRecord(){
   const hits = rs.filter(r=>(r.trio?.ret||0)+(r.tri?.ret||0)>0).reverse();
   html += `<div class="card"><h2>的中した記録</h2>${hits.length?hits.map(r=>`<div class="row" style="justify-content:space-between;border-top:1px solid var(--rule);padding:6px 0"><span>${fmtDate(r.date)} ${esc(r.venue||"")}${esc(r.rno||"")}R ${esc(r.name||"")}</span><span class="num">${r.trio?.ret?"3連複 "+yen(r.trio.ret):""} ${r.tri?.ret?"3連単 "+yen(r.tri.ret):""}</span></div>`).join(""):`<p class="muted" style="margin:0">まだありません。</p>`}</div>`;
   el.innerHTML = html;
+  renderVirt();
+}
+let VIRT = {};
+async function renderVirt(){
+  const box = $("#virt-card"); if(!box) return;
+  for(const d of (INDEX?.dates||[])){ if(!(d in VIRT) || d===todayJST()){ try{ VIRT[d] = await fetchEnc(`virt/${d}.json`); }catch(e){ VIRT[d]=null; } } }
+  const vs = Object.values(VIRT).filter(Boolean).flatMap(x=>Object.values(x.races||{})).filter(v=>v.score && !v.approx);
+  if(!$("#virt-card")) return;
+  if(!vs.length){ box.innerHTML = `<h2>全レースの仮想予想</h2><p class="muted" style="margin:0">まだ記録がありません。11/28（土）から、全レースのAIの1番手（3連複）と見送り理由を記録します。</p>`; return; }
+  const g = {買い:[], 見送り:[]}; vs.forEach(v=>g[v.bet?"買い":"見送り"].push(v));
+  const row = (k, a) => { const t=a.filter(v=>v.score.top1_hit!=null), h=t.filter(v=>v.score.top1_hit).length, r=t.reduce((s,v)=>s+(v.score.top1_ret||0),0);
+    const c=a.filter(v=>v.score.p_win>0 && v.score.q_win>0), d=c.length? c.reduce((s,v)=>s+Math.log(v.score.p_win/v.score.q_win),0)/c.length : null;
+    return `<tr><td>${k}</td><td class="r num">${a.length}</td><td class="r num">${t.length?pct(h/t.length,1):"—"}</td><td class="r num ${r>=t.length*100?"pos":"neg"}">${t.length?pct(r/(t.length*100),1):"—"}</td><td class="r num">${d==null?"—":(d>=0?"+":"")+d.toFixed(3)}</td></tr>`; };
+  const rc = {}; vs.forEach(v=>rc[v.reason]=(rc[v.reason]||0)+1);
+  box.innerHTML = `<h2>全レースの仮想予想 <span class="sub">${vs.length}レース</span></h2>
+    <p class="note" style="margin:0 0 6px">AIの確率が一番高い3連複を100円買ったとした成績と、当たった組にAIが付けた確率と人気の確率の差（＋ならAIの方が当たりを高く見ていた）。実際には買っていません。</p>
+    <div class="tw"><table><thead><tr><th></th><th class="r">レース</th><th class="r">1番手の的中率</th><th class="r">回収率</th><th class="r">AIと人気の差</th></tr></thead><tbody>${row("買い",g["買い"])}${row("見送り",g["見送り"])}${row("全体",vs)}</tbody></table></div>
+    <h2 style="margin-top:12px;font-size:15px">見送り理由</h2>
+    <div class="tw"><table><thead><tr><th>理由</th><th class="r">レース</th><th class="r">割合</th></tr></thead><tbody>${Object.entries(rc).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<tr><td>${esc(k)}</td><td class="r num">${n}</td><td class="r num">${pct(n/vs.length,0)}</td></tr>`).join("")}</tbody></table></div>`;
 }
 function chart(rs){
   const pts=[]; let c1=0,r1=0,c2=0,r2=0;
@@ -394,7 +414,7 @@ function chart(rs){
   const line=(k,col)=>{ const d=pts.map((p,i)=>p[k]==null?null:`${x(i)},${y(p[k])}`).filter(Boolean); return d.length>1?`<polyline fill="none" stroke="${col}" stroke-width="2.2" points="${d.join(" ")}"/>`:""; };
   return `<svg viewBox="0 0 ${Wd} ${H}" width="100%" role="img" aria-label="回収率の推移">${g}${line(0,"var(--turf)")}${line(1,"var(--gold)")}
     <text x="${Wd-pr}" y="${H-6}" text-anchor="end">${pts.length}レース</text></svg>
-    <div class="row small" style="gap:14px"><span><b style="color:var(--turf)">━</b> 3連複</span><span><b style="color:var(--gold)">━</b> 3連単（検証中）</span><span class="muted">点線＝100%</span></div>`;
+    <div class="row small" style="gap:14px"><span><b style="color:var(--turf)">━</b> 3連複</span><span><b style="color:var(--gold)">━</b> 3連単</span><span class="muted">点線＝100%</span></div>`;
 }
 
 /* ---------- しくみ ---------- */
