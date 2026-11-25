@@ -1,0 +1,32 @@
+name: 馬場情報の取り込み
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 21 * * 0,3"   # 月曜・木曜の朝6時23分（日本時間）
+permissions:
+  contents: write
+concurrency:
+  group: daily
+  cancel-in-progress: false
+jobs:
+  baba:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: data ブランチ
+        run: |
+          git clone -q --depth 1 --branch data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" data
+          git -C data config user.name "keiyomi-bot"; git -C data config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: scraper/requirements.txt }
+      - run: pip install -r scraper/requirements.txt && sudo apt-get install -y -q poppler-utils > /dev/null
+      - name: 取り込み
+        env:
+          APP_PASS: ${{ secrets.APP_PASS }}
+        run: |
+          python scraper/baba.py --data data --from 2019
+          git -C data add -A
+          git -C data diff --cached --quiet && exit 0
+          git -C data commit -q -m "馬場情報 $(TZ=Asia/Tokyo date '+%m/%d')"
+          for k in 1 2 3 4; do git -C data push -q origin data && exit 0; git -C data pull -q --rebase -X theirs origin data; done
