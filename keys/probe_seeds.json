@@ -1,16 +1,8 @@
 {
- "max_pages": 16,
- "max_depth": 0,
+ "max_pages": 6,
+ "max_depth": 1,
+ "follow": "pw01dud",
  "seeds": [
-  ["GET", "/keiba/baba/cushion/", null],
-  ["GET", "/keiba/baba/moist/", null],
-  ["GET", "/keiba/baba/archive/2024.html", null],
-  ["GET", "/keiba/baba/archive/2023.html", null],
-  ["GET", "/keiba/baba/archive/2022.html", null],
-  ["GET", "/keiba/baba/archive/2021.html", null],
-  ["GET", "/keiba/baba/archive/2020.html", null],
-  ["GET", "/keiba/baba/archive/2019.html", null],
-  ["GET", "/keiba/baba/archive/2023pdf/tokyo05.pdf", null],
-  ["GET", "/keiba/baba/archive/2021pdf/tokyo05.pdf", null]
+  ["POST", "/JRADB/accessS.html", "pw01sde1005202605010120261107/7E"]
  ]
 }
