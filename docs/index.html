@@ -355,7 +355,7 @@ function renderRecord(){
   const M = k => { let c=0, r=0; rs.forEach(x=>{ const m=x.money?.[k]; if(m){ c+=m.cost; r+=m.ret; } }); return {c,r,roi:c?r/c:null}; };
   const MT=M("trio"), MX=M("tri"), MA={c:MT.c+MX.c, r:MT.r+MX.r}; MA.roi = MA.c? MA.r/MA.c : null;
   let html = `<div class="banner"><b>本番の成績</b>：締切5分前に決めたAIの買い目を、AIが決めた金額で買ったとして実際の払戻で採点しています（お金は賭けていません）。回収率の判断には数百レースが必要です（いま ${rs.length}レース）。</div>
-  <div class="card"><h2>本番の賭け方での成績 <span class="sub">3連複 1レース5,000円・1日20,000円（勝負日50,000円）／3連単 1レース1,000円・1日5,000円</span></h2>
+  <div class="card"><h2>本番の賭け方での成績 <span class="sub">3連複 1レース10,000円・1日20,000円（勝負日50,000円）／3連単 1レース1,000円・1日5,000円</span></h2>
     <div class="tiles">
       <div class="tile"><div class="k">回収率（3連複＋3連単）</div><div class="v ${MA.roi>=1?"pos":MA.roi!=null?"neg":""}">${MA.roi!=null?pct(MA.roi,1):"—"}</div></div>
       <div class="tile"><div class="k">収支</div><div class="v ${MA.r-MA.c>=0?"pos":"neg"}" style="font-size:22px">${MA.c?yen(MA.r-MA.c):"—"}</div><div class="small muted">投資 ${yen(MA.c)} ／ 払戻 ${yen(MA.r)}</div></div>

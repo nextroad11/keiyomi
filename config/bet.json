@@ -1,1 +1,1 @@
-{"scale": 0.3, "types": ["trio", "tri"], "race_cap": 5000, "day_cap": 20000, "big_cap": 50000, "tri_race_cap": 1000, "tri_day_cap": 5000}
+{"scale": 0.3, "types": ["trio", "tri"], "race_cap": 10000, "day_cap": 20000, "big_cap": 50000, "tri_race_cap": 1000, "tri_day_cap": 5000}
