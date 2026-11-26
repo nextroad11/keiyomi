@@ -197,7 +197,7 @@ def score(paper, race_res):
         cost = sum(x.get("y", 0) for x in picks)
         ret = sum(rows.get(x["c"].replace("→", "-"), 0) * x.get("y", 0) / 100 for x in picks)
         return {"cost": cost, "ret": round(ret)}
-    t["money"] = {"trio": money("3連複", paper["trio"]), "tri": money("3連単", paper["tri"])}
+    t["money"] = {"trio": money("3連複", paper["trio"]), "tri": money("3連単", paper["tri"]), "ana": money("3連単", paper.get("ana", []))}
     t["pat"] = {"honsen": money("3連複", (paper.get("pat") or {}).get("honsen", [])), "ana": money("3連単", (paper.get("pat") or {}).get("ana", []))}
     t["trio_pay"] = (pay.get("3連複") or [{}])[0].get("yen"); t["tri_pay"] = (pay.get("3連単") or [{}])[0].get("yen")
     order = sorted([x for x in race_res.get("runners", []) if x.get("pos")], key=lambda x: x["pos"])[:3]
@@ -228,7 +228,7 @@ def virt_score(v, race_res):
 def _send(kind, p, q):
     """買い目の通知。本文は 3連複・3連単の組と金額、合計、当たった場合の払戻の目安"""
     lines, tot = [], 0
-    for key, name in (("trio", "3連複"), ("tri", "3連単")):
+    for key, name in (("trio", "3連複"), ("tri", "3連単"), ("ana", "3連単・大穴")):
         xs = [x for x in q.get(key, []) if x.get("y")]
         if not xs:
             continue
@@ -290,15 +290,20 @@ def main():
                     x["y"] = 100
                 else:
                     x.pop("y", None)
+        # 大穴（3連単・人気薄が1着）：本番。1点100円、1レースの上限まで、1日の上限（3連複・3連単と合わせて）の残りで
+        if "ana" in prod.BET_TYPES and (p.get("pat") or {}).get("ana"):
+            used_now = sum(x.get("y", 0) for x in p.get("trio", []) + p.get("tri", []))
+            n = max(0, min(len(p["pat"]["ana"]), prod.ANA_RACE_CAP // 100, (room - used_now) // 100))
+            p["ana"] = [dict(x, y=100) for x in p["pat"]["ana"][:n]]
         p["cap"] = cap
         virt = p.pop("_virt", None)
         if "paper" in prev:
             p["paper"] = prev["paper"]
         elif p.get("ex_mins") is not None and p["ex_mins"] <= FREEZE_AT:
-            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {}), "pat": p.get("pat", {})}
+            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "ana": p.get("ana", []), "others": p.get("others", {}), "pat": p.get("pat", {})}
         elif rid in res and p.get("ex_mins") is not None and p["ex_mins"] <= 30.5:
             # 5分前が取れずに発走した：取れた中で一番遅い締切前のオッズで固定（何分前かを残す）
-            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {}), "pat": p.get("pat", {}), "late": True}
+            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "ana": p.get("ana", []), "others": p.get("others", {}), "pat": p.get("pat", {}), "late": True}
         # 仮想予想：記録用の買い目を固定したのと同じ時点で固定する
         if "paper" in p and rid not in V["races"]:
             V["races"][rid] = dict(virt or {"reason": "3連複オッズなし"}, mins=p["paper"]["mins"], late=p["paper"].get("late", False),
@@ -310,7 +315,7 @@ def main():
             V["races"][rid]["score"] = virt_score(V["races"][rid], res[rid])
         # スマホへの通知：10分前ごろに予告（仮の買い目）、5分前に確定。買い目のあるレースだけ、それぞれ1回
         p["notified"] = list(prev.get("notified", []))
-        picks = lambda q: [x for x in q.get("trio", []) + q.get("tri", []) if x.get("y")]
+        picks = lambda q: [x for x in q.get("trio", []) + q.get("tri", []) + q.get("ana", []) if x.get("y")]
         if rid not in res:
             if "paper" in p and "paper" not in prev and not p["paper"].get("late") and "fix" not in p["notified"]:
                 p["notified"].append("fix")
@@ -321,7 +326,7 @@ def main():
         if "paper" in p:
             for x in p["paper"].get("trio", []):
                 day_used += x.get("y", 0); day_ev += x.get("y", 0) * (x["p"] * x["o"] - 1)
-            tri_used += sum(x.get("y", 0) for x in p["paper"].get("tri", []))
+            tri_used += sum(x.get("y", 0) for x in p["paper"].get("tri", []) + p["paper"].get("ana", []))
         if rid in res:
             p["result"] = score(p.get("paper") or {"trio": [], "tri": []}, res[rid])
             if "paper" not in p:

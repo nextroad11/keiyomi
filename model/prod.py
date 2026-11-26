@@ -226,8 +226,10 @@ def pattern_picks(n, probs, o_t, o_f, win_odds_first):
 
 # 3連単は3連複と別の枠。1点100円の均等買い（検証と同じ）。1レース・1日の上限だけ決める
 TRI_RACE_CAP, TRI_DAY_CAP = 1000, 5000
+ANA_RACE_CAP = 2000   # 大穴：1点100円・20点まで
 try:
     TRI_RACE_CAP = int(_cfg.get("tri_race_cap", TRI_RACE_CAP)); TRI_DAY_CAP = int(_cfg.get("tri_day_cap", TRI_DAY_CAP))
+    ANA_RACE_CAP = int(_cfg.get("ana_race_cap", ANA_RACE_CAP))
 except Exception:  # noqa: BLE001
     pass
 # 上限を直接決めたとき（config/bet.json の race_cap・day_cap・big_cap）はそちらを使う
