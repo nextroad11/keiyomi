@@ -162,6 +162,13 @@ def predict_race(rid, r, rows, ex_snaps, model):
                             "pf": _b16(p_f), "qf": _b16(q_f)}
         out["trio"] = [{"c": combo_str(C[i], nos, False), "p": round(float(p_f[i]), 4), "o": float(o_f[i]), "ev": round(float(p_f[i] * o_f[i]), 3)} for i in pk["trio"]]
         out["tri"] = [{"c": combo_str(P[i], nos, True), "p": round(float(p_t[i]), 5), "o": float(o_t[i]), "ev": round(float(p_t[i] * o_t[i]), 3)} for i in pk["tri"]]
+        # 記録だけのパターン（本線・大穴）
+        wodds = {int(k): (v or {}).get("win") for k, v in odds_now.items()}
+        w1 = np.array([wodds.get(nos[i]) or float(gg.loc[gg.no == nos[i], "odds"].iloc[0]) for i in P[:, 0]], dtype=float)
+        pp = prod.pattern_picks(n, probs, o_t, o_f, w1)
+        out["pat"] = {
+            "honsen": [{"c": combo_str(C[i], nos, False), "p": round(float(p_f[i]), 4), "o": float(o_f[i]), "y": prod.PATTERNS["honsen"]["unit"]} for i in pp.get("honsen", [])],
+            "ana": [{"c": combo_str(P[i], nos, True), "p": round(float(p_t[i]), 5), "o": float(o_t[i]), "y": prod.PATTERNS["ana"]["unit"]} for i in pp.get("ana", [])]}
         # 参考：AIの確率が高い3連複の上位（買い目ではない）
         if p_f is not None:
             top = np.argsort(-p_f)[:5]
@@ -191,6 +198,7 @@ def score(paper, race_res):
         ret = sum(rows.get(x["c"].replace("→", "-"), 0) * x.get("y", 0) / 100 for x in picks)
         return {"cost": cost, "ret": round(ret)}
     t["money"] = {"trio": money("3連複", paper["trio"]), "tri": money("3連単", paper["tri"])}
+    t["pat"] = {"honsen": money("3連複", (paper.get("pat") or {}).get("honsen", [])), "ana": money("3連単", (paper.get("pat") or {}).get("ana", []))}
     t["trio_pay"] = (pay.get("3連複") or [{}])[0].get("yen"); t["tri_pay"] = (pay.get("3連単") or [{}])[0].get("yen")
     order = sorted([x for x in race_res.get("runners", []) if x.get("pos")], key=lambda x: x["pos"])[:3]
     t["top3"] = [x["no"] for x in order]
@@ -287,10 +295,10 @@ def main():
         if "paper" in prev:
             p["paper"] = prev["paper"]
         elif p.get("ex_mins") is not None and p["ex_mins"] <= FREEZE_AT:
-            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {})}
+            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {}), "pat": p.get("pat", {})}
         elif rid in res and p.get("ex_mins") is not None and p["ex_mins"] <= 30.5:
             # 5分前が取れずに発走した：取れた中で一番遅い締切前のオッズで固定（何分前かを残す）
-            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {}), "late": True}
+            p["paper"] = {"mins": p["ex_mins"], "at": p["ex_at"], "trio": p.get("trio", []), "tri": p.get("tri", []), "others": p.get("others", {}), "pat": p.get("pat", {}), "late": True}
         # 仮想予想：記録用の買い目を固定したのと同じ時点で固定する
         if "paper" in p and rid not in V["races"]:
             V["races"][rid] = dict(virt or {"reason": "3連複オッズなし"}, mins=p["paper"]["mins"], late=p["paper"].get("late", False),

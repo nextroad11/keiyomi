@@ -202,6 +202,28 @@ except Exception:  # noqa: BLE001
 if SCALE != 1.0:
     _r = lambda v: max(100, int(round(v * SCALE / 100)) * 100)
     BANK, RACE_CAP, DAY_CAP, BIG_CAP, BIG_EV = BANK * SCALE, _r(RACE_CAP), _r(DAY_CAP), _r(BIG_CAP), BIG_EV * SCALE
+# 記録だけのパターン（お金は賭けない）。条件は experiments/29_patterns.py で基準決め期間だけから決めた
+PATTERNS = {
+    "honsen": {"kind": "trio", "pmin": 0.06, "th": 1.0, "cap": 3, "unit": 1000},          # 本線：固い組に厚く
+    "ana": {"kind": "tri", "win_odds": 20, "th": 1.0, "pmin": 0.001, "cap": 20, "unit": 100},  # 大穴：人気薄を1着に広く
+}
+
+
+def pattern_picks(n, probs, o_t, o_f, win_odds_first):
+    """{"honsen": [3連複の組の番号], "ana": [3連単の並びの番号]}（確率の高い順）"""
+    out = {}
+    pf, okf = probs["f"]; pt, okt = probs["t"]
+    a = PATTERNS["honsen"]
+    if pf is not None:
+        c = np.where(okf & (pf >= a["pmin"]) & (pf * o_f >= a["th"]))[0]
+        out["honsen"] = [int(i) for i in c[np.argsort(-pf[c])][: a["cap"]]]
+    a = PATTERNS["ana"]
+    if pt is not None:
+        c = np.where(okt & (win_odds_first >= a["win_odds"]) & (pt * o_t >= a["th"]) & (pt >= a["pmin"]))[0]
+        out["ana"] = [int(i) for i in c[np.argsort(-pt[c])][: a["cap"]]]
+    return out
+
+
 # 3連単は3連複と別の枠。1点100円の均等買い（検証と同じ）。1レース・1日の上限だけ決める
 TRI_RACE_CAP, TRI_DAY_CAP = 1000, 5000
 try:

@@ -337,6 +337,13 @@ function renderRace(){
         ${oth[t].length?comboTable(oth[t],"trio",hitOf(t)):""}</div>`).join("")}
       <p class="note" style="margin-top:6px">期待値1.0以上の組（ワイド・複勝は下限オッズで計算）。過去の検証では、どれも数回の大穴頼みか前後半で結果がばらばらで、まだ採用していません。実戦の記録で確かめています。</p></div>`;
   }
+  const pat = (p.paper && p.paper.pat) || p.pat || {};
+  if((pat.honsen||[]).length || (pat.ana||[]).length){
+    const t3s = top3.length ? top3.slice().sort((a,b)=>a-b).join("-") : null, t3o = top3.length ? top3.join("→") : null;
+    html += `<div class="card"><h2>記録だけのパターン <span class="sub">お金は賭けません${p.paper?"・確定":""}</span></h2>
+      <div style="margin-top:4px"><b>本線</b> <span class="small muted">3連複・固い組に1点1,000円</span> ${(pat.honsen||[]).length?comboTable(pat.honsen,"trio",t3s):'<span class="small muted">なし</span>'}</div>
+      <div style="margin-top:8px"><b>大穴</b> <span class="small muted">3連単・単勝20倍以上の馬が1着、1点100円</span> ${(pat.ana||[]).length?comboTable(pat.ana,"tri",t3o):'<span class="small muted">なし</span>'}</div></div>`;
+  }
   if(p.paper){ html += `<div class="card"><h2>AIの買い目（確定） <span class="sub">${minsLabel(p.paper.mins)}のオッズで決定${p.paper.late?"（5分前が取れず）":""}</span></h2>
     <div class="small">3連複 ${p.paper.trio.length}点：${p.paper.trio.map(x=>esc(x.c)+(x.y?` ${yen(x.y)}`:"")).join("、")||"なし"}</div>
     <div class="small" style="margin-top:4px">3連単 ${p.paper.tri.length}点：${p.paper.tri.slice(0,12).map(x=>esc(x.c)).join("、")||"なし"}${p.paper.tri.length>12?" ほか":""}</div></div>`; }
@@ -374,6 +381,11 @@ function renderRecord(){
   if(Object.keys(os).length) html += `<div class="card"><h2>ほかの券種（試験運用）</h2><div class="tw"><table><thead><tr><th>券種</th><th class="r">レース</th><th class="r">点数</th><th class="r">的中</th><th class="r">回収率</th></tr></thead><tbody>
     ${OT.filter(t=>os[t]).map(t=>{const o=os[t]; return `<tr><td>${t}</td><td class="r num">${o.races}</td><td class="r num">${o.pts}</td><td class="r num">${o.hit}</td><td class="r num ${o.ret>=o.pts*100?"pos":"neg"}">${pct(o.ret/(o.pts*100),1)}</td></tr>`;}).join("")}
     </tbody></table></div></div>`;
+  const PT={honsen:{n:"本線（3連複・1点1,000円）",c:0,r:0,races:0,hit:0},ana:{n:"大穴（3連単・1点100円）",c:0,r:0,races:0,hit:0}};
+  rs.forEach(r=>Object.entries(r.pat||{}).forEach(([k,x])=>{ const o=PT[k]; if(!o||!x.cost) return; o.c+=x.cost; o.r+=x.ret||0; o.races++; if(x.ret) o.hit++; }));
+  html += `<div class="card"><h2>記録だけのパターン <span class="sub">11/28〜・お金は賭けていません</span></h2><div class="tw"><table><thead><tr><th>パターン</th><th class="r">レース</th><th class="r">的中</th><th class="r">投資</th><th class="r">回収率</th></tr></thead><tbody>
+    ${Object.values(PT).map(o=>`<tr><td>${o.n}</td><td class="r num">${o.races}</td><td class="r num">${o.hit}</td><td class="r num">${yen(o.c)}</td><td class="r num ${o.c&&o.r>=o.c?"pos":"neg"}">${o.c?pct(o.r/o.c,1):"—"}</td></tr>`).join("")}
+    </tbody></table></div><p class="note" style="margin-top:6px">本線：3連複でAIの確率6%以上・期待値1以上の組を上位3点。大穴：単勝20倍以上の馬を1着に置いた3連単で、期待値1以上の並びを確率の高い順に20点まで。過去（2025年6月〜2026年5月）では本線 回収率161%（的中27/209点）、大穴 240%（的中5/1,891点）。</p></div>`;
   html += `<div class="card" id="virt-card"><h2>全レースの仮想予想 <span class="sub">買い・見送りに関係なく記録（11/28〜）</span></h2><p class="muted" style="margin:0">読み込み中…</p></div>`;
   html += `<div class="card"><h2>回収率の推移 <span class="sub">記録を積み上げた累計</span></h2>${chart(rs)}</div>`;
   const byDate = {}; rs.forEach(r=>{ const d=byDate[r.date]=byDate[r.date]||{n:0,tp:0,tr:0,xp:0,xr:0}; d.n++; d.tp+=r.trio?.pts||0; d.tr+=r.trio?.ret||0; d.xp+=r.tri?.pts||0; d.xr+=r.tri?.ret||0; });
