@@ -268,14 +268,15 @@ def main():
         # 金額（本線の3連複と、試験運用の3連単）。決まっていない買い目は、いまの残り予算で仮に計算する
         if cap == prod.DAY_CAP and day_ev >= prod.BIG_EV:
             cap = prod.BIG_CAP
-        room = cap - day_used
+        room = cap - day_used - tri_used   # 3連複と3連単を合わせた1日の上限
         # 実際にお金を賭ける券種だけに金額を付ける（config/bet.json の types）。ほかは記録だけ（100円均等の参考成績）
         if "trio" in prod.BET_TYPES and p.get("trio"):
             for x, v in zip(p["trio"], prod.stakes(p["trio"], room)):
                 x["y"] = v
         # 3連単は別枠：1点100円、1レース・1日の上限まで（確率の高い順に並んでいる）
         if "tri" in prod.BET_TYPES and p.get("tri"):
-            n = max(0, min(len(p["tri"]), prod.TRI_RACE_CAP // 100, (prod.TRI_DAY_CAP - tri_used) // 100))
+            trio_now = sum(x.get("y", 0) for x in p.get("trio", []))
+            n = max(0, min(len(p["tri"]), prod.TRI_RACE_CAP // 100, (prod.TRI_DAY_CAP - tri_used) // 100, (room - trio_now) // 100))
             for i, x in enumerate(p["tri"]):
                 if i < n:
                     x["y"] = 100
