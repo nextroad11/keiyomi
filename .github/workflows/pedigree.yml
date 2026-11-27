@@ -2,11 +2,11 @@ name: 血統の取り込み
 on:
   workflow_dispatch:
   schedule:
-    - cron: "41 */3 * * 1-5"   # 平日、3時間ごと（開催日の取得とぶつからない日）
+    - cron: "41 0-20/3 * * 1-5"   # 平日（日本時間の月〜金）、3時間ごと。土日の取得と重ならないように
 permissions:
   contents: write
 concurrency:
-  group: daily
+  group: pedigree
   cancel-in-progress: false
 jobs:
   pedigree:
